@@ -1,0 +1,12 @@
+#pragma once
+
+enum class TetraminoType {
+	TETRAMINO_NONE = 0,
+	TETRAMINO_I,
+	TETRAMINO_J,
+	TETRAMINO_L,
+	TETRAMINO_O,
+	TETRAMINO_S,
+	TETRAMINO_Z,
+	TETRAMINO_T
+};
