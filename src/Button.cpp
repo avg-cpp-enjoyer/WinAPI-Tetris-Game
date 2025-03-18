@@ -46,12 +46,12 @@ void Button::Draw(HDC hdc) {
 
 	HBRUSH currentBrush = m_defaultBrush;
 
-	if (m_pressed) {
-		currentBrush = m_clickedBrush;
-	}
-
 	if (m_hovered) {
 		currentBrush = m_hoveredBrush;
+	}
+
+	if (m_pressed) {
+		currentBrush = m_clickedBrush;
 	}
 
 	HGDIOBJ oldPen = SelectObject(hdc, m_pen);
