@@ -1,14 +1,53 @@
 ﻿#include "TetrisWindow.h"
 
 TetrisWindow::TetrisWindow() {
-	m_hFont = CreateFont(24, 0, 0, 0, FW_NORMAL, false, false, false,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Bahnschrift");
-
 	m_gridBrush = CreateSolidBrush(RGB(50, 50, 50));
 	m_bgBrush = CreateSolidBrush(RGB(30, 30, 30));
 	m_uiElemBgBrush = CreateSolidBrush(RGB(40, 40, 40));
 	m_borderPen = CreatePen(PS_SOLID, 0, RGB(80, 80, 80));
+
+	m_scaleFactor = GetScreenDpi() / 96.0f;
+
+	m_hFont = CreateFont(static_cast<int>(24 * m_scaleFactor), 0, 0, 0, FW_NORMAL, false, false, false,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Bahnschrift");
+
+	m_blockSize       = static_cast<int>(30.0f  * m_scaleFactor);
+	m_gridOffsetX     = static_cast<int>(20.0f  * m_scaleFactor);
+	m_gridOffsetY     = static_cast<int>(20.0f  * m_scaleFactor);
+	m_uiElemWidth     = static_cast<int>(168.0f * m_scaleFactor);
+	m_uiElemHeight    = static_cast<int>(44.0f  * m_scaleFactor);
+	m_uiElemCornerRad = static_cast<int>(10.0f  * m_scaleFactor);
+	m_uiElemSpacing   = static_cast<int>(15.0f  * m_scaleFactor);
+	m_nextWndHeight   = static_cast<int>(168.0f * m_scaleFactor);
+	windowWidth       = static_cast<int>(544.0f * m_scaleFactor);
+	windowHeight      = static_cast<int>(678.0f * m_scaleFactor);
+
+	m_rcGameField = {
+		m_gridOffsetX, m_gridOffsetY,
+		m_gridOffsetX + GameField::WIDTH * m_blockSize,
+		m_gridOffsetY + GameField::HEIGHT * m_blockSize
+	};
+
+	m_rcScore = {
+		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize,
+		m_gridOffsetY + m_nextWndHeight + m_uiElemSpacing,
+		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize + m_uiElemWidth,
+		m_gridOffsetY + m_nextWndHeight + m_uiElemSpacing + m_uiElemHeight
+	};
+
+	m_rcHighScore = {
+		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize,
+		m_gridOffsetY + m_nextWndHeight + m_uiElemSpacing * 2 + m_uiElemHeight,
+		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize + m_uiElemWidth,
+		m_gridOffsetY + m_nextWndHeight + m_uiElemSpacing * 2 + m_uiElemHeight * 2
+	};
+
+	m_rcNextTetramino = {
+		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize, m_gridOffsetY,
+		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize + m_uiElemWidth,
+		m_gridOffsetY + m_nextWndHeight
+	};
 }
 
 TetrisWindow::~TetrisWindow() {
@@ -69,19 +108,12 @@ void TetrisWindow::OnPaint() {
 	HGDIOBJ hOldPen = SelectObject(m_hMemDC, m_borderPen);
 	HGDIOBJ hOldBrush = SelectObject(m_hMemDC, GetStockObject(HOLLOW_BRUSH));
 
-	RECT rcBorder = {
-		GRID_OFFSET_X,
-		GRID_OFFSET_Y,
-		GRID_OFFSET_X + GameField::WIDTH * BLOCK_SIZE,
-		GRID_OFFSET_Y + GameField::HEIGHT * BLOCK_SIZE
-	};
-
 	Rectangle(
 		m_hMemDC,
-		rcBorder.left,
-		rcBorder.top,
-		rcBorder.right,
-		rcBorder.bottom
+		m_rcGameField.left,
+		m_rcGameField.top,
+		m_rcGameField.right,
+		m_rcGameField.bottom
 	);
 
 	SelectObject(m_hMemDC, hOldPen);
@@ -91,42 +123,38 @@ void TetrisWindow::OnPaint() {
 
 	for (int y = 0; y < GameField::HEIGHT; y++) {
 		for (int x = 0; x < GameField::WIDTH; x++) {
-			TetraminoType type = m_gameField.GetGrid()[x][y];
-			if (type != TetraminoType::TETRAMINO_NONE) {
-				if (auto* bitmap = ResourceManager::GetTetraminoBitmap(type)) {
+			TetraminoType tetraminoType = m_gameField.GetGrid()[x][y];
+			if (tetraminoType != TetraminoType::TETRAMINO_NONE) {
+				if (auto* bitmap = ResourceManager::GetTetraminoBitmap(tetraminoType)) {
 					graphics.DrawImage(bitmap,
-						GRID_OFFSET_X + x * BLOCK_SIZE,
-						GRID_OFFSET_Y + y * BLOCK_SIZE,
-						BLOCK_SIZE, BLOCK_SIZE);
+						m_gridOffsetX + x * m_blockSize,
+						m_gridOffsetY + y * m_blockSize,
+						m_blockSize, m_blockSize);
 				}
 			}
 		}
 	}
 
-	if (const auto piece = m_gameField.GetCurrentTetramino()) {
-		TetraminoType pieceType = piece->GetType();
-		if (auto* bitmap = ResourceManager::GetTetraminoBitmap(pieceType)) {
-			for (const auto& block : piece->GetTetramino()) {
-				vec2 pos = piece->GetPos() + block;
+	if (const auto tetramino = m_gameField.GetCurrentTetramino()) {
+		TetraminoType tetraminoType = tetramino->GetType();
+		if (auto* bitmap = ResourceManager::GetTetraminoBitmap(tetraminoType)) {
+			for (const auto& block : tetramino->GetTetramino()) {
+				vec2 pos = tetramino->GetPos() + block;
 				graphics.DrawImage(bitmap,
-					GRID_OFFSET_X + pos.x * BLOCK_SIZE,
-					GRID_OFFSET_Y + pos.y * BLOCK_SIZE,
-					BLOCK_SIZE, BLOCK_SIZE);
+					m_gridOffsetX + pos.x * m_blockSize,
+					m_gridOffsetY + pos.y * m_blockSize,
+					m_blockSize, m_blockSize);
 			}
 		}
 	}
 
-	const int x = GRID_OFFSET_X * 2 + GameField::WIDTH * BLOCK_SIZE;
-	const int scoreY = GRID_OFFSET_Y + NEXT_WND_HEIGHT + UI_ELEM_SPACING;
-	const int highScoreY = scoreY + UI_ELEM_HEIGHT + UI_ELEM_SPACING;
-
-	DrawNextTetraminoWnd(m_hMemDC, x, GRID_OFFSET_Y);
+	DrawNextTetraminoWnd(m_hMemDC, m_rcNextTetramino);
 
 	std::wstring scoreText = L"Score: " + std::to_wstring(m_gameField.GetScore());
 	std::wstring highScoreText = L"High: " + std::to_wstring(m_gameField.GetHighScore());
 
-	DrawRoundedText(m_hMemDC, x, scoreY, scoreText);
-	DrawRoundedText(m_hMemDC, x, highScoreY, highScoreText);
+	DrawRoundedText(m_hMemDC, m_rcScore, scoreText);
+	DrawRoundedText(m_hMemDC, m_rcHighScore, highScoreText);
 
 	BitBlt(hdc, 0, 0, rcClient.right, rcClient.bottom, m_hMemDC, 0, 0, SRCCOPY);
 	EndPaint(m_hWnd, &ps);
@@ -155,34 +183,39 @@ void TetrisWindow::OnKeyDown(WPARAM key) {
 		break;
 	}
 
-	InvalidateRect(m_hWnd, nullptr, false);
+	UpdateWnd();
 }
 
 void TetrisWindow::UpdateGame() {
 	if (!m_gameField.IsGameOver()) {
 		m_gameField.Update();
-		InvalidateRect(m_hWnd, nullptr, false);
+		UpdateWnd();
 	}
 }
 
-void TetrisWindow::DrawRoundedText(HDC hdc, int x, int y, const std::wstring& text) {
-	SelectObject(hdc, m_hFont);
+void TetrisWindow::UpdateWnd() const {
+	InvalidateRect(m_hWnd, &m_rcGameField, false);
+	InvalidateRect(m_hWnd, &m_rcNextTetramino, false);
+	InvalidateRect(m_hWnd, &m_rcScore, false);
+	InvalidateRect(m_hWnd, &m_rcHighScore, false);
+}
 
-	RECT rect = {x, y, x + UI_ELEM_WIDTH, y + UI_ELEM_HEIGHT};
+void TetrisWindow::DrawRoundedText(HDC hdc, RECT rect, const std::wstring& text) {
+	SelectObject(hdc, m_hFont);
 
 	HGDIOBJ oldBrush = SelectObject(hdc, m_uiElemBgBrush);
 	HGDIOBJ oldPen = SelectObject(hdc, m_borderPen);
 
-	RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, UI_ELEM_CORNER_RAD, UI_ELEM_CORNER_RAD);
+	RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, m_uiElemCornerRad, m_uiElemCornerRad);
 
 	SetBkMode(hdc, TRANSPARENT);
-	SetTextColor(hdc, TEXT_COLOR);
+	SetTextColor(hdc, s_textColor);
 
 	SIZE textSize;
 	GetTextExtentPoint32W(hdc, text.c_str(), (int)text.length(), &textSize);
 
-	int posx = rect.left + (rect.right - rect.left - textSize.cx) / 2;
-	int posy = rect.top + (rect.bottom - rect.top - textSize.cy) / 2;
+	const int posx = rect.left + (rect.right - rect.left - textSize.cx) / 2;
+	const int posy = rect.top + (rect.bottom - rect.top - textSize.cy) / 2;
 
 	TextOut(hdc, posx, posy, text.c_str(), (int)text.length());
 
@@ -190,32 +223,19 @@ void TetrisWindow::DrawRoundedText(HDC hdc, int x, int y, const std::wstring& te
 	SelectObject(hdc, oldPen);
 }
 
-void TetrisWindow::DrawNextTetraminoWnd(HDC hdc, int x, int y) {
-
-	RECT nextTetraminoRectOuter = { x, y, x + UI_ELEM_WIDTH, y + NEXT_WND_HEIGHT };
-
+void TetrisWindow::DrawNextTetraminoWnd(HDC hdc, RECT rect) {
 	HGDIOBJ hOldBrush = SelectObject(hdc, m_uiElemBgBrush);
 	HGDIOBJ hOldPen = SelectObject(hdc, m_borderPen);
 
-	RoundRect(
-		hdc,
-		nextTetraminoRectOuter.left,
-		nextTetraminoRectOuter.top,
-		nextTetraminoRectOuter.right,
-		nextTetraminoRectOuter.bottom,
-		UI_ELEM_CORNER_RAD,
-		UI_ELEM_CORNER_RAD
-	);
+	RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, m_uiElemCornerRad, m_uiElemCornerRad);
 
 	SelectObject(hdc, hOldBrush);
 	SelectObject(hdc, hOldPen);
 
-	const int padding = 10;
+	const int padding = static_cast<int>(10.0f * m_scaleFactor);
 	RECT nextTetraminoRectInner = {
-		nextTetraminoRectOuter.left + padding,
-		nextTetraminoRectOuter.top + 40 + padding,
-		nextTetraminoRectOuter.right - padding,
-		nextTetraminoRectOuter.bottom - padding
+		rect.left + padding, rect.top + static_cast<int>(40.0f * m_scaleFactor) + padding,
+		rect.right - padding, rect.bottom - padding
 	};
 
 	hOldBrush = SelectObject(hdc, m_bgBrush);
@@ -227,8 +247,8 @@ void TetrisWindow::DrawNextTetraminoWnd(HDC hdc, int x, int y) {
 		nextTetraminoRectInner.top,
 		nextTetraminoRectInner.right,
 		nextTetraminoRectInner.bottom,
-		UI_ELEM_CORNER_RAD,
-		UI_ELEM_CORNER_RAD
+		m_uiElemCornerRad,
+		m_uiElemCornerRad
 	);
 
 	SelectObject(hdc, hOldBrush);
@@ -236,12 +256,12 @@ void TetrisWindow::DrawNextTetraminoWnd(HDC hdc, int x, int y) {
 
 	SIZE textSize;
 	GetTextExtentPoint32W(hdc, L"Next: ", 5, &textSize);
-	int posy = y - 2 + (nextTetraminoRectInner.top - y - textSize.cy) / 2;
+	int posy = rect.top - 2 + (nextTetraminoRectInner.top - rect.top - textSize.cy) / 2;
 
 	SelectObject(hdc, m_hFont);
 	SetBkMode(hdc, TRANSPARENT);
-	SetTextColor(hdc, TEXT_COLOR);
-	TextOut(hdc, x + padding, posy, L"Next:", 5);
+	SetTextColor(hdc, s_textColor);
+	TextOut(hdc, rect.left + padding, posy, L"Next:", 5);
 
 
 	Gdiplus::Graphics graphics(hdc);
@@ -256,39 +276,33 @@ void TetrisWindow::DrawNextTetraminoWnd(HDC hdc, int x, int y) {
 
 				switch (tetraminoType) {
 				case TetraminoType::TETRAMINO_I:
-					offsetX = -77;
-					offsetY = 40;
+					offsetX = static_cast<int>(-77.0f * m_scaleFactor);
+					offsetY = static_cast<int>(40.0f * m_scaleFactor);
 					break;
 				case TetraminoType::TETRAMINO_J:
-					offsetX = -47;
-					offsetY = 9;
+					offsetX = static_cast<int>(-47.0f * m_scaleFactor);
+					offsetY = static_cast<int>(9.0f * m_scaleFactor);
 					break;
 				case TetraminoType::TETRAMINO_L:
-					offsetX = -76;
-					offsetY = 9;
+					offsetX = static_cast<int>(-77.0f * m_scaleFactor);
+					offsetY = static_cast<int>(9.0f * m_scaleFactor);
 					break;
 				case TetraminoType::TETRAMINO_O:
-					offsetX = -48;
-					offsetY = 24;
+					offsetX = static_cast<int>(-48.0f * m_scaleFactor);
+					offsetY = static_cast<int>(25.0f * m_scaleFactor);
 					break;
 				case TetraminoType::TETRAMINO_S:
-					offsetX = -62;
-					offsetY = 25;
-					break;
 				case TetraminoType::TETRAMINO_Z:
-					offsetX = -62;
-					offsetY = 25;
-					break;
 				case TetraminoType::TETRAMINO_T:
-					offsetX = -62;
-					offsetY = 26;
+					offsetX = static_cast<int>(-62.0f * m_scaleFactor);
+					offsetY = static_cast<int>(25.0f * m_scaleFactor);
 					break;
 				}
 
 				graphics.DrawImage(bitmap,
-					nextTetraminoRectInner.left + offsetX + pos.x * BLOCK_SIZE,
-					nextTetraminoRectInner.top + offsetY + pos.y * BLOCK_SIZE,
-					BLOCK_SIZE, BLOCK_SIZE);
+					nextTetraminoRectInner.left + offsetX + pos.x * m_blockSize,
+					nextTetraminoRectInner.top + offsetY + pos.y * m_blockSize,
+					m_blockSize, m_blockSize);
 			}
 		}
 	}
@@ -299,14 +313,14 @@ void TetrisWindow::AddButtons() {
 	COLORREF clrHovered = RGB(30, 30, 30);
 	COLORREF clrClicked = RGB(40, 40, 40);
 
-	const int buttonX = GRID_OFFSET_X * 2 + GameField::WIDTH * BLOCK_SIZE;
-	const int pauseBtnY = GRID_OFFSET_Y + GameField::HEIGHT * BLOCK_SIZE - UI_ELEM_HEIGHT * 2 - UI_ELEM_SPACING;
-	const int quitBtnY = GRID_OFFSET_Y + GameField::HEIGHT * BLOCK_SIZE - UI_ELEM_HEIGHT;
+	const int buttonX = m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize;
+	const int pauseBtnY = m_gridOffsetY + GameField::HEIGHT * m_blockSize - m_uiElemHeight * 2 - m_uiElemSpacing;
+	const int quitBtnY = m_gridOffsetY + GameField::HEIGHT * m_blockSize - m_uiElemHeight;
 
-	m_pauseButton = std::make_unique<Button>(m_hWnd, L"Pause", buttonX, pauseBtnY, UI_ELEM_WIDTH, UI_ELEM_HEIGHT, UI_ELEM_CORNER_RAD, 
-		IDC_BUTTON_1, m_hFont, TEXT_COLOR, clrDefault, clrClicked, clrHovered);
-	m_quitButton = std::make_unique<Button>(m_hWnd, L"Quit", buttonX, quitBtnY, UI_ELEM_WIDTH, UI_ELEM_HEIGHT, UI_ELEM_CORNER_RAD,
-		IDC_BUTTON_2, m_hFont, TEXT_COLOR, clrDefault, clrClicked, clrHovered);
+	m_pauseButton = std::make_unique<Button>(m_hWnd, L"Pause", buttonX, pauseBtnY, m_uiElemWidth, m_uiElemHeight, m_uiElemCornerRad, 
+		IDC_BUTTON_1, m_hFont, s_textColor, clrDefault, clrClicked, clrHovered);
+	m_quitButton = std::make_unique<Button>(m_hWnd, L"Quit", buttonX, quitBtnY, m_uiElemWidth, m_uiElemHeight, m_uiElemCornerRad,
+		IDC_BUTTON_2, m_hFont, s_textColor, clrDefault, clrClicked, clrHovered);
 
 	m_quitButton->SetOnClick([]() { PostQuitMessage(0); });
 	m_pauseButton->SetOnClick([this]() { PauseGame(); });
@@ -316,8 +330,8 @@ void TetrisWindow::CreateGameOverWindow() {
 	KillTimer(m_hWnd, 1);
 
 	GameOverWindow gameOver(m_gameField.GetScore(), m_gameField.GetHighScore());
-	gameOver.Create(L"Game Over", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN,
-		0, 0, 0, 350, 250);
+	gameOver.Create(L"Game Over", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+		0, 0, 0, 350 * static_cast<int>(m_scaleFactor), 250 * static_cast<int>(m_scaleFactor));
 
 	EnableWindow(m_hWnd, false);
 
@@ -325,8 +339,8 @@ void TetrisWindow::CreateGameOverWindow() {
 	GetWindowRect(m_hWnd, &rcMain);
 	GetWindowRect(gameOver.Window(), &rcGameOver);
 
-	int x = rcMain.left + (rcMain.right - rcMain.left - (rcGameOver.right - rcGameOver.left)) / 2;
-	int y = rcMain.top + (rcMain.bottom - rcMain.top - (rcGameOver.bottom - rcGameOver.top)) / 2;
+	const int x = rcMain.left + (rcMain.right - rcMain.left - (rcGameOver.right - rcGameOver.left)) / 2;
+	const int y = rcMain.top + (rcMain.bottom - rcMain.top - (rcGameOver.bottom - rcGameOver.top)) / 2;
 
 	SetWindowPos(gameOver.Window(), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
@@ -361,7 +375,7 @@ void TetrisWindow::PauseGame() {
 		SetTimer(m_hWnd, 1, 500, nullptr);
 	}
 
-	InvalidateRect(m_hWnd, nullptr, false);
+	InvalidateRect(m_hWnd, &m_rcGameField, false);
 	SetFocus(m_hWnd);
 }
 
@@ -388,4 +402,14 @@ void TetrisWindow::CleanupBackBuffer() {
 	if (m_hMemDC) DeleteDC(m_hMemDC);
 	m_hMemDC = nullptr;
 	m_hMemBitmap = nullptr;
+}
+
+float TetrisWindow::GetScreenDpi() const {
+	UINT dpiX = 0;
+	UINT dpiY = 0;
+
+	HMONITOR hMonitor = MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
+	HRESULT hRes = GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+
+	return SUCCEEDED(hRes) ? static_cast<float>(dpiX) : 96.0f;
 }

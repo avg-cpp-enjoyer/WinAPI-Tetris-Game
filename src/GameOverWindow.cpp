@@ -4,11 +4,13 @@
 
 GameOverWindow::GameOverWindow(int score, int highScore)
     : m_score(score), m_highScore(highScore) {
-    m_hFont = CreateFont(24, 0, 0, 0, FW_NORMAL, false, false, false,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Bahnschrift");
-
 	m_bgBrush = CreateSolidBrush(RGB(30, 30, 30));
+
+	m_scaleFactor = GetScreenDpi() / 96.0f;
+
+	m_hFont = CreateFont(static_cast<int>(24 * m_scaleFactor), 0, 0, 0, FW_NORMAL, false, false, false,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Bahnschrift");
 }
 
 GameOverWindow::~GameOverWindow() {
@@ -45,13 +47,13 @@ void GameOverWindow::CreateControls() {
 	RECT rc;
 	GetClientRect(m_hWnd, &rc);
 
-	const int buttonWidth = 100;
-	const int buttonHeight = 40;
-	const int buttonSpacing = 20;
+	const int buttonWidth   = static_cast<int>(100.0f * m_scaleFactor);
+	const int buttonHeight  = static_cast<int>(40.0f  * m_scaleFactor);
+	const int buttonSpacing = static_cast<int>(20.0f  * m_scaleFactor);
 
-	int totalWidth = buttonWidth * 2 + buttonSpacing;
-	int startX = (rc.right - totalWidth) / 2;
-	int yPos = rc.bottom - buttonHeight - 20;
+	const int totalWidth = buttonWidth * 2 + buttonSpacing;
+	const int startX = (rc.right - totalWidth) / 2;
+	const int yPos = rc.bottom - buttonHeight - 20;
 
 	COLORREF clrDefault = RGB(50, 50, 50);
 	COLORREF clrHovered = RGB(60, 60, 60);
@@ -92,9 +94,19 @@ void GameOverWindow::OnPaint() {
 		+ L"\nHigh Score: " + std::to_wstring(m_highScore);
 
 	RECT textRect = rc;
-	textRect.top = rc.top + 40;
-	textRect.bottom = rc.bottom - 80;
+	textRect.top = rc.top + static_cast<int>(40.0f * m_scaleFactor);
+	textRect.bottom = rc.bottom - static_cast<int>(80.0f * m_scaleFactor);
 	DrawText(hdc, text.c_str(), -1, &textRect, DT_CENTER | DT_VCENTER | DT_NOCLIP);
 
 	EndPaint(m_hWnd, &ps);
+}
+
+float GameOverWindow::GetScreenDpi() const {
+	UINT dpiX = 0;
+	UINT dpiY = 0;
+
+	HMONITOR hMonitor = MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
+	HRESULT hRes = GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+
+	return SUCCEEDED(hRes) ? static_cast<float>(dpiX) : 96.0f;
 }

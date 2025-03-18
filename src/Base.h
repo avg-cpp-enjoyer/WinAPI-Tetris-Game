@@ -58,7 +58,7 @@ inline bool Base<Derived_T>::Create(
 	}
 
 	m_hWnd = CreateWindowEx(
-		dwExStyle | WS_CLIPCHILDREN, ClassName(), lpWindowName, dwStyle, x, y,
+		dwExStyle, ClassName(), lpWindowName, dwStyle, x, y,
 		width, height, hWndParent, hMenu, GetModuleHandle(nullptr), this
 	);
 

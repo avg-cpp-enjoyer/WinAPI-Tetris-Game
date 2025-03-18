@@ -35,6 +35,7 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     gdiplus
     Shlwapi
+	Shcore
     user32
     gdi32
     kernel32

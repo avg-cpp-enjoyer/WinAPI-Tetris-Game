@@ -7,7 +7,7 @@ int APIENTRY wWinMain([[maybe_unused]] HINSTANCE hInstance, HINSTANCE, [[maybe_u
 
 	TetrisWindow win;
 	if (!win.Create(L"Tetris", WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
-		0, CW_USEDEFAULT, CW_USEDEFAULT, 544, 678)) {
+		WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, win.windowWidth, win.windowHeight)) {
 		return 0;
 	}
 

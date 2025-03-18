@@ -4,6 +4,7 @@ This is a simple Tetris game written in C++ using WinAPI and GDI+.
 ## Features
 - Smooth rendering with double buffering
 - Custom UI elements (buttons, Game Over screen)
+- Adaptive UI scaling (adjusts to different screen resolutions)
 - Resource management system
 - High-score saving system
 

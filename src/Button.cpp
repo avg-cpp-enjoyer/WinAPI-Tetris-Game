@@ -10,7 +10,7 @@ Button::Button(
 	m_hButton = CreateWindow(
 		L"BUTTON",
 		text.c_str(),
-		WS_CHILD | WS_VISIBLE,
+		WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
 		x, y, width, height,
 		parent,
 		(HMENU)(INT_PTR)id,
@@ -33,6 +33,7 @@ Button::Button(
 }
 
 Button::~Button() {
+	SetWindowLongPtr(m_hButton, GWLP_WNDPROC, (LONG_PTR)m_originalWndProc);
 	DeleteObject(m_defaultBrush);
 	DeleteObject(m_hoveredBrush);
 	DeleteObject(m_clickedBrush);
@@ -125,6 +126,9 @@ LRESULT CALLBACK Button::ButtonProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 		button->m_onClickHandler();
 		InvalidateRect(hWnd, nullptr, true);
 		break;
+	}
+	case WM_ERASEBKGND: {
+		return 1;
 	}
 	}
 
