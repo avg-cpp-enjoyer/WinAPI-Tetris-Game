@@ -89,12 +89,6 @@ LRESULT CALLBACK Button::ButtonProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 	if (!button) return DefWindowProc(hWnd, msg, wParam, lParam);
 
 	switch (msg) {
-	case WM_NCCREATE: {
-		CREATESTRUCT* cs = (CREATESTRUCT*)lParam;
-		button = (Button*)cs->lpCreateParams;
-		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)button);
-		break;
-	}
 	case WM_PAINT: {
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
