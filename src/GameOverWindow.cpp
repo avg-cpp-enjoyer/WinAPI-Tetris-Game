@@ -50,6 +50,7 @@ void GameOverWindow::CreateControls() {
 	const int buttonWidth   = static_cast<int>(100.0f * m_scaleFactor);
 	const int buttonHeight  = static_cast<int>(40.0f  * m_scaleFactor);
 	const int buttonSpacing = static_cast<int>(20.0f  * m_scaleFactor);
+	const int cornerRadius  = static_cast<int>(10.0f * m_scaleFactor);
 
 	const int totalWidth = buttonWidth * 2 + buttonSpacing;
 	const int startX = (rc.right - totalWidth) / 2;
@@ -61,10 +62,10 @@ void GameOverWindow::CreateControls() {
 	COLORREF textColor  = RGB(128, 128, 128);
 
 	m_restartButton = std::make_unique<Button>(m_hWnd, L"Restart", startX, yPos, buttonWidth, buttonHeight,
-		10, IDC_BUTTON_R, m_hFont, textColor, clrDefault, clrClicked, clrHovered);
+		cornerRadius, IDC_BUTTON_R, m_hFont, textColor, clrDefault, clrClicked, clrHovered);
 
 	m_quitButton = std::make_unique<Button>(m_hWnd, L"Quit", startX + buttonWidth + buttonSpacing, yPos,
-		buttonWidth, buttonHeight, 10, IDC_BUTTON_Q, m_hFont, textColor, clrDefault, clrClicked, clrHovered);
+		buttonWidth, buttonHeight, cornerRadius, IDC_BUTTON_Q, m_hFont, textColor, clrDefault, clrClicked, clrHovered);
 
 	m_restartButton->SetOnClick([this]() {
 		m_restart = true;

@@ -10,7 +10,7 @@ public:
 
 	Button(
 		HWND parent, const std::wstring& text, int x, int y, int width, int height,
-		int cornerRaduis, int id, HFONT hFont, COLORREF textColor, COLORREF clrDefault,
+		int cornerRadius, int id, HFONT hFont, COLORREF textColor, COLORREF clrDefault,
 		COLORREF clrClicked, COLORREF clrHovered
 	);
 
