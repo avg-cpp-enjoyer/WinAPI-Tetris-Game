@@ -212,12 +212,12 @@ void TetrisWindow::DrawRoundedText(HDC hdc, RECT rect, const std::wstring& text)
 	SetTextColor(hdc, s_textColor);
 
 	SIZE textSize;
-	GetTextExtentPoint32W(hdc, text.c_str(), (int)text.length(), &textSize);
+	GetTextExtentPoint32W(hdc, text.c_str(), static_cast<int>(text.length()), &textSize);
 
 	const int posx = rect.left + (rect.right - rect.left - textSize.cx) / 2;
 	const int posy = rect.top + (rect.bottom - rect.top - textSize.cy) / 2;
 
-	TextOut(hdc, posx, posy, text.c_str(), (int)text.length());
+	TextOut(hdc, posx, posy, text.c_str(), static_cast<int>(text.length()));
 
 	SelectObject(hdc, oldBrush);
 	SelectObject(hdc, oldPen);
@@ -331,7 +331,7 @@ void TetrisWindow::CreateGameOverWindow() {
 
 	GameOverWindow gameOver(m_gameField.GetScore(), m_gameField.GetHighScore());
 	gameOver.Create(L"Game Over", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-		0, 0, 0, 350 * static_cast<int>(m_scaleFactor), 250 * static_cast<int>(m_scaleFactor));
+		0, 0, 0, static_cast<int>(350.0f * m_scaleFactor), static_cast<int>(250.0f * m_scaleFactor));
 
 	EnableWindow(m_hWnd, false);
 

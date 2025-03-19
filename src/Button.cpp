@@ -13,7 +13,7 @@ Button::Button(
 		WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
 		x, y, width, height,
 		parent,
-		(HMENU)(INT_PTR)id,
+		reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
 		GetModuleHandle(nullptr),
 		this
 	);
@@ -27,13 +27,13 @@ Button::Button(
 	m_clickedBrush = CreateSolidBrush(m_clrClicked);
 	m_pen = CreatePen(PS_SOLID, 0, RGB(80, 80, 80));
 
-	m_originalWndProc = (WNDPROC)SetWindowLongPtr(m_hButton, GWLP_WNDPROC, (LONG_PTR)ButtonProc);
-	SetWindowLongPtr(m_hButton, GWLP_USERDATA, (LONG_PTR)this);
-	SendMessage(m_hButton, WM_SETFONT, (WPARAM)m_hFont, true);
+	m_originalWndProc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(m_hButton, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(ButtonProc)));
+	SetWindowLongPtr(m_hButton, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+	SendMessage(m_hButton, WM_SETFONT, reinterpret_cast<WPARAM>(m_hFont), true);
 }
 
 Button::~Button() {
-	SetWindowLongPtr(m_hButton, GWLP_WNDPROC, (LONG_PTR)m_originalWndProc);
+	SetWindowLongPtr(m_hButton, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_originalWndProc));
 	DeleteObject(m_defaultBrush);
 	DeleteObject(m_hoveredBrush);
 	DeleteObject(m_clickedBrush);
@@ -64,7 +64,7 @@ void Button::Draw(HDC hdc) {
 		m_cornerRadius, m_cornerRadius
 	);
 
-	HFONT oldFont = (HFONT)SelectObject(hdc, m_hFont);
+	HFONT oldFont = reinterpret_cast<HFONT>(SelectObject(hdc, m_hFont));
 
 	SetBkMode(hdc, TRANSPARENT);
 	SetTextColor(hdc, m_textColor);
