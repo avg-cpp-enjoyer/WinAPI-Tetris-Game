@@ -1,13 +1,9 @@
+#pragma once
+
 #include "TetraminoTypes.h"
+#include "vec2.h"
 
 #include <array>
-
-struct vec2 {
-	vec2 operator+(const vec2& other) const { return { x + other.x, y + other.y }; }
-
-	int x = 0;
-	int y = 0;
-};
 
 enum class Direction {
 	DIRECTION_DOWN,

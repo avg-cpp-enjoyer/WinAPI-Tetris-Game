@@ -10,13 +10,14 @@ void ResourceManager::ClearResources() {
 }
 
 ResourceManager::ResourceManager() {
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_I, BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_J, BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_L, BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_O, BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_S, BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_Z, BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_T, BitmapPtr(nullptr, BitmapDeleter()));
+	m_bitmaps.emplace(TetraminoType::TETRAMINO_I,     BitmapPtr(nullptr, BitmapDeleter()));
+	m_bitmaps.emplace(TetraminoType::TETRAMINO_J,     BitmapPtr(nullptr, BitmapDeleter()));
+	m_bitmaps.emplace(TetraminoType::TETRAMINO_L,     BitmapPtr(nullptr, BitmapDeleter()));
+	m_bitmaps.emplace(TetraminoType::TETRAMINO_O,     BitmapPtr(nullptr, BitmapDeleter()));
+	m_bitmaps.emplace(TetraminoType::TETRAMINO_S,     BitmapPtr(nullptr, BitmapDeleter()));
+	m_bitmaps.emplace(TetraminoType::TETRAMINO_Z,     BitmapPtr(nullptr, BitmapDeleter()));
+	m_bitmaps.emplace(TetraminoType::TETRAMINO_T,     BitmapPtr(nullptr, BitmapDeleter()));
+	m_bitmaps.emplace(TetraminoType::TETRAMINO_GHOST, BitmapPtr(nullptr, BitmapDeleter()));
     
 	LoadResources();
 }
@@ -27,13 +28,14 @@ ResourceManager& ResourceManager::GetInstance() {
 }
 
 void ResourceManager::LoadResources() {
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_I, MAKEINTRESOURCE(IDB_TETRAMINO_I));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_J, MAKEINTRESOURCE(IDB_TETRAMINO_J));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_L, MAKEINTRESOURCE(IDB_TETRAMINO_L));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_O, MAKEINTRESOURCE(IDB_TETRAMINO_O));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_S, MAKEINTRESOURCE(IDB_TETRAMINO_S));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_Z, MAKEINTRESOURCE(IDB_TETRAMINO_Z));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_T, MAKEINTRESOURCE(IDB_TETRAMINO_T));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_I,     MAKEINTRESOURCE(IDB_TETRAMINO_I));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_J,     MAKEINTRESOURCE(IDB_TETRAMINO_J));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_L,     MAKEINTRESOURCE(IDB_TETRAMINO_L));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_O,     MAKEINTRESOURCE(IDB_TETRAMINO_O));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_S,     MAKEINTRESOURCE(IDB_TETRAMINO_S));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_Z,     MAKEINTRESOURCE(IDB_TETRAMINO_Z));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_T,     MAKEINTRESOURCE(IDB_TETRAMINO_T));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_GHOST, MAKEINTRESOURCE(IDB_TETRAMINO_GHOST));
 }
 
 void ResourceManager::LoadTetraminoBitmap(TetraminoType type, const wchar_t* resourceName) {

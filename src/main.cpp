@@ -1,6 +1,6 @@
 #include "TetrisWindow.h"
 
-int APIENTRY wWinMain([[maybe_unused]] HINSTANCE hInstance, HINSTANCE, [[maybe_unused]] PWSTR pCmdLine, int nCmdShow) {
+int APIENTRY wWinMain([[maybe_unused]] _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, [[maybe_unused]] _In_ PWSTR pCmdLine, _In_ int nCmdShow) {
 	Gdiplus::GdiplusStartupInput gdiplusStartupInput;
 	ULONG_PTR gdiplusToken;
 	Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);

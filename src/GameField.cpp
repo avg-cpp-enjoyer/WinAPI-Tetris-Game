@@ -6,6 +6,8 @@ GameField::GameField() {
 
 	m_nextTetramino = CreateRandomTetramino();
 	SpawnNewTetramino();
+	m_ghostTetramino = TetraminoFactory::CreateTetramino(m_currentTetramino->GetType());
+	UpdateGhostPos();
 }
 
 bool GameField::MoveCurrent(Direction dir) {
@@ -23,12 +25,13 @@ bool GameField::MoveCurrent(Direction dir) {
 bool GameField::RotateCurrent() {
 	m_currentTetramino->Rotate();
 
-	vec2 originalPos = m_currentTetramino->GetPos();
-	std::array<vec2, 7> offsets = { vec2{0, 0}, vec2{-1, 0}, vec2{1, 0}, vec2{-2, 0}, vec2{2, 0}, vec2{0, 1}, vec2{0, 2} };
+	const vec2 originalPos = m_currentTetramino->GetPos();
+	const std::array<vec2, 7> offsets = { vec2(0, 0), vec2(-1, 0), vec2(1, 0), vec2(-2, 0), vec2(2, 0), vec2(0, 1), vec2(0, 2) };
 
 	for (const auto& offset : offsets) {
 		m_currentTetramino->SetPos(originalPos + offset);
 		if (TetraminoFits(*m_currentTetramino)) {
+			m_ghostTetramino->Rotate();
 			return true;
 		}
 	}
@@ -43,17 +46,7 @@ bool GameField::RotateCurrent() {
 }
 
 std::unique_ptr<Tetramino> GameField::CreateRandomTetramino() {
-	switch (m_distribution(m_rng)) {
-	case 0: return std::make_unique<Tetramino_I>();
-	case 1: return std::make_unique<Tetramino_J>();
-	case 2: return std::make_unique<Tetramino_L>();
-	case 3: return std::make_unique<Tetramino_O>();
-	case 4: return std::make_unique<Tetramino_S>();
-	case 5: return std::make_unique<Tetramino_Z>();
-	case 6: return std::make_unique<Tetramino_T>();
-	}
-
-	return nullptr;
+	return TetraminoFactory::CreateTetramino(static_cast<TetraminoType>(m_distribution(m_rng)));
 }
 
 void GameField::HardDrop() {
@@ -62,6 +55,8 @@ void GameField::HardDrop() {
 }
 
 void GameField::Update() {
+	UpdateGhostPos();
+
 	if (!MoveCurrent(Direction::DIRECTION_DOWN)) {
 		LockTetramino();
 	}
@@ -72,10 +67,8 @@ void GameField::Pause() {
 }
 
 void GameField::Reset(){
-	for (int i = 0; i < GameField::WIDTH; i++) {
-		for (int j = 0; j < GameField::HEIGHT; j++) {
-			m_grid[i][j] = TetraminoType::TETRAMINO_NONE;
-		}
+	for (auto& row : m_grid) {
+		row.fill(TetraminoType::TETRAMINO_NONE);
 	}
 
 	m_score = 0;
@@ -88,6 +81,21 @@ void GameField::Reset(){
 
 bool GameField::IsPaused() const {
 	return m_isPaused;
+}
+
+bool GameField::IsGhostCollide() const {
+	const vec2 ghostPos = m_ghostTetramino->GetPos();
+	const vec2 currentPos = m_currentTetramino->GetPos();
+
+	for (const auto& ghostBlock : m_ghostTetramino->GetTetramino()) {
+		for (const auto& currentBlock : m_currentTetramino->GetTetramino()) {
+			if (currentBlock + currentPos == ghostBlock + ghostPos) {
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 bool GameField::IsGameOver() const {
@@ -108,6 +116,11 @@ const std::array<std::array<TetraminoType, GameField::HEIGHT>, GameField::WIDTH>
 
 const Tetramino* GameField::GetCurrentTetramino() const {
 	return m_currentTetramino.get();
+}
+
+const Tetramino* GameField::GetGhostTetramino() const
+{
+	return m_ghostTetramino.get();
 }
 
 const Tetramino* GameField::GetNextTetramino() const {
@@ -149,6 +162,33 @@ void GameField::LockTetramino() {
 		m_gameOver = true;
 		HighScoreManager::CheckAndUpdate(m_score);
 	}
+}
+
+void GameField::UpdateGhostPos() {
+	std::array<int, WIDTH> firstOccupied;
+	firstOccupied.fill(HEIGHT);
+
+	for (int x = 0; x < WIDTH; ++x) {
+		for (int y = 0; y < HEIGHT; ++y) {
+			if (m_grid[x][y] != TetraminoType::TETRAMINO_NONE) {
+				firstOccupied[x] = y;
+				break;
+			}
+		}
+	}
+
+	int maxDrop = HEIGHT;
+	vec2 pos = m_currentTetramino->GetPos();
+	for (const auto& block : m_currentTetramino->GetTetramino()) {
+		int blockX = pos.x + block.x;
+		int blockY = pos.y + block.y;
+		if (blockX >= 0 && blockX < WIDTH) {
+			int availableDrop = firstOccupied.at(blockX) - blockY - 1;
+			maxDrop = std::min(maxDrop, availableDrop);
+		}
+	}
+
+	m_ghostTetramino->SetPos(pos + vec2(0, maxDrop));
 }
 
 void GameField::ClearLines() {
@@ -194,5 +234,7 @@ void GameField::AddScore(int lines) {
 
 void GameField::SpawnNewTetramino() {
 	m_currentTetramino = std::move(m_nextTetramino);
+	m_ghostTetramino = TetraminoFactory::CreateTetramino(m_currentTetramino->GetType());
 	m_nextTetramino = CreateRandomTetramino();
+	UpdateGhostPos();
 }

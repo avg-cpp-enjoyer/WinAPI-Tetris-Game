@@ -1,4 +1,5 @@
 #include "Tetramino.h"
+#include <stdexcept>
 
 void Tetramino::Move(Direction dir) {
 	switch (dir) {
@@ -35,73 +36,73 @@ TetraminoType Tetramino::GetType() const {
 	return m_type;
 }
 
-Tetramino_I::Tetramino_I() : Tetramino(TetraminoType::TETRAMINO_I, vec2{3, -1}) {
-	m_tetramino = {{ vec2{0, 1}, vec2{1, 1}, vec2{2, 1}, vec2{3, 1} }};
+Tetramino_I::Tetramino_I() : Tetramino(TetraminoType::TETRAMINO_I, vec2(3, -1)) {
+	m_tetramino = {{ vec2(0, 1), vec2(1, 1), vec2(2, 1), vec2(3, 1) }};
 	m_rotationStates = {{
-		{vec2{0, 1}, vec2{1, 1}, vec2{2, 1}, vec2{3, 1}},
-		{vec2{1, 0}, vec2{1, 1}, vec2{1, 2}, vec2{1, 3}},
-		{vec2{0, 1}, vec2{1, 1}, vec2{2, 1}, vec2{3, 1}},
-		{vec2{1, 0}, vec2{1, 1}, vec2{1, 2}, vec2{1, 3}},
+		{vec2(0, 1), vec2(1, 1), vec2(2, 1), vec2(3, 1)},
+		{vec2(1, 0), vec2(1, 1), vec2(1, 2), vec2(1, 3)},
+		{vec2(0, 1), vec2(1, 1), vec2(2, 1), vec2(3, 1)},
+		{vec2(1, 0), vec2(1, 1), vec2(1, 2), vec2(1, 3)},
 	}};
 }
 
-Tetramino_J::Tetramino_J() : Tetramino(TetraminoType::TETRAMINO_J, vec2{3, 0}) {
-	m_tetramino = {{ vec2{1, 0}, vec2{1, 1}, vec2{1, 2}, vec2{0, 2} }};
+Tetramino_J::Tetramino_J() : Tetramino(TetraminoType::TETRAMINO_J, vec2(3, 0)) {
+	m_tetramino = {{ vec2(1, 0), vec2(1, 1), vec2(1, 2), vec2(0, 2) }};
 	m_rotationStates = {{
-		{vec2{1, 0}, vec2{1, 1}, vec2{1, 2}, vec2{0, 2}},
-		{vec2{0, 1}, vec2{1, 1}, vec2{2, 1}, vec2{2, 2}},
-		{vec2{1, 0}, vec2{2, 0}, vec2{1, 1}, vec2{1, 2}},
-		{vec2{0, 0}, vec2{0, 1}, vec2{1, 1}, vec2{2, 1}},
+		{vec2(1, 0), vec2(1, 1), vec2(1, 2), vec2(0, 2)},
+		{vec2(0, 1), vec2(1, 1), vec2(2, 1), vec2(2, 2)},
+		{vec2(1, 0), vec2(2, 0), vec2(1, 1), vec2(1, 2)},
+		{vec2(0, 0), vec2(0, 1), vec2(1, 1), vec2(2, 1)},
 	}};
 }
 
-Tetramino_O::Tetramino_O() : Tetramino(TetraminoType::TETRAMINO_O, vec2{3, 0}) {
-	m_tetramino = {{ vec2{0, 0}, vec2{0, 1}, vec2{1, 0}, vec2{1, 1} }};
+Tetramino_O::Tetramino_O() : Tetramino(TetraminoType::TETRAMINO_O, vec2(3, 0)) {
+	m_tetramino = {{ vec2(0, 0), vec2(0, 1), vec2(1, 0), vec2(1, 1) }};
 	m_rotationStates = {{
-		{vec2{0, 0}, vec2{0, 1}, vec2{1, 0}, vec2{1, 1}},
-		{vec2{0, 0}, vec2{0, 1}, vec2{1, 0}, vec2{1, 1}},
-		{vec2{0, 0}, vec2{0, 1}, vec2{1, 0}, vec2{1, 1}},
-		{vec2{0, 0}, vec2{0, 1}, vec2{1, 0}, vec2{1, 1}},
+		{vec2(0, 0), vec2(0, 1), vec2(1, 0), vec2(1, 1)},
+		{vec2(0, 0), vec2(0, 1), vec2(1, 0), vec2(1, 1)},
+		{vec2(0, 0), vec2(0, 1), vec2(1, 0), vec2(1, 1)},
+		{vec2(0, 0), vec2(0, 1), vec2(1, 0), vec2(1, 1)},
 	}};
 }
 
-Tetramino_L::Tetramino_L() : Tetramino(TetraminoType::TETRAMINO_L, vec2{3, 0}) {
-	m_tetramino = {{ vec2{1, 0}, vec2{1, 1}, vec2{1, 2}, vec2{2, 2}} };
+Tetramino_L::Tetramino_L() : Tetramino(TetraminoType::TETRAMINO_L, vec2(3, 0)) {
+	m_tetramino = {{ vec2(1, 0), vec2(1, 1), vec2(1, 2), vec2(2, 2) }};
 	m_rotationStates = {{
-		{vec2{1, 0}, vec2{1, 1}, vec2{1, 2}, vec2{2, 2}},
-		{vec2{0, 1}, vec2{1, 1}, vec2{2, 1}, vec2{2, 0}},
-		{vec2{0, 0}, vec2{1, 0}, vec2{1, 1}, vec2{1, 2}},
-		{vec2{0, 2}, vec2{0, 1}, vec2{1, 1}, vec2{2, 1}},
+		{vec2(1, 0), vec2(1, 1), vec2(1, 2), vec2(2, 2)},
+		{vec2(0, 1), vec2(1, 1), vec2(2, 1), vec2(2, 0)},
+		{vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(1, 2)},
+		{vec2(0, 2), vec2(0, 1), vec2(1, 1), vec2(2, 1)},
 	}};
 }
 
-Tetramino_Z::Tetramino_Z() : Tetramino(TetraminoType::TETRAMINO_Z, vec2{3, 0}) {
-	m_tetramino = {{ vec2{0, 0}, vec2{1, 0}, vec2{1, 1}, vec2{2, 1} }};
+Tetramino_Z::Tetramino_Z() : Tetramino(TetraminoType::TETRAMINO_Z, vec2(3, 0)) {
+	m_tetramino = {{ vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(2, 1) }};
 	m_rotationStates = {{
-		{vec2{0, 0}, vec2{1, 0}, vec2{1, 1}, vec2{2, 1}},
-		{vec2{2, 0}, vec2{1, 1}, vec2{2, 1}, vec2{1, 2}},
-		{vec2{0, 0}, vec2{1, 0}, vec2{1, 1}, vec2{2, 1}},
-		{vec2{2, 0}, vec2{1, 1}, vec2{2, 1}, vec2{1, 2}},
+		{vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(2, 1)},
+		{vec2(2, 0), vec2(1, 1), vec2(2, 1), vec2(1, 2)},
+		{vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(2, 1)},
+		{vec2(2, 0), vec2(1, 1), vec2(2, 1), vec2(1, 2)},
 	}};
 }
 
-Tetramino_S::Tetramino_S() : Tetramino(TetraminoType::TETRAMINO_S, vec2{3, 0}) {
-	m_tetramino = {{ vec2{1, 0}, vec2{2, 0}, vec2{0, 1}, vec2{1, 1} }};
+Tetramino_S::Tetramino_S() : Tetramino(TetraminoType::TETRAMINO_S, vec2(3, 0)) {
+	m_tetramino = {{ vec2(1, 0), vec2(2, 0), vec2(0, 1), vec2(1, 1) }};
 	m_rotationStates = {{
-		{vec2{1, 0}, vec2{2, 0}, vec2{0, 1}, vec2{1, 1}},
-		{vec2{1, 0}, vec2{1, 1}, vec2{2, 1}, vec2{2, 2}},
-		{vec2{1, 0}, vec2{2, 0}, vec2{0, 1}, vec2{1, 1}},
-		{vec2{1, 0}, vec2{1, 1}, vec2{2, 1}, vec2{2, 2}},
+		{vec2(1, 0), vec2(2, 0), vec2(0, 1), vec2(1, 1)},
+		{vec2(1, 0), vec2(1, 1), vec2(2, 1), vec2(2, 2)},
+		{vec2(1, 0), vec2(2, 0), vec2(0, 1), vec2(1, 1)},
+		{vec2(1, 0), vec2(1, 1), vec2(2, 1), vec2(2, 2)},
 	}};
 }
 
-Tetramino_T::Tetramino_T() : Tetramino(TetraminoType::TETRAMINO_T, vec2{3, -1}) {
-	m_tetramino = {{ vec2{0, 1}, vec2{1, 1}, vec2{2, 1}, vec2{1, 2} }};
+Tetramino_T::Tetramino_T() : Tetramino(TetraminoType::TETRAMINO_T, vec2(3, -1)) {
+	m_tetramino = {{ vec2(0, 1), vec2(1, 1), vec2(2, 1), vec2(1, 2) }};
 	m_rotationStates = {{
-		{vec2{0, 1}, vec2{1, 1}, vec2{2, 1}, vec2{1, 2}},
-		{vec2{1, 0}, vec2{1, 1}, vec2{1, 2}, vec2{0, 1}},
-		{vec2{0, 1}, vec2{1, 1}, vec2{2, 1}, vec2{1, 0}},
-		{vec2{1, 0}, vec2{1, 1}, vec2{1, 2}, vec2{2, 1}},
+		{vec2(0, 1), vec2(1, 1), vec2(2, 1), vec2(1, 2)},
+		{vec2(1, 0), vec2(1, 1), vec2(1, 2), vec2(0, 1)},
+		{vec2(0, 1), vec2(1, 1), vec2(2, 1), vec2(1, 0)},
+		{vec2(1, 0), vec2(1, 1), vec2(1, 2), vec2(2, 1)},
 	}};
 }
 

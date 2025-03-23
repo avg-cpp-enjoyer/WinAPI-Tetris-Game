@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "Tetramino.h"
+#include "TetraminoFactory.h"
 #include "HighScoreManager.h"
 
 class GameField {
@@ -17,18 +18,21 @@ public:
 
 	bool MoveCurrent(Direction dir);
 	bool RotateCurrent();
+	void UpdateGhostPos();
 	void HardDrop();
 	void Update();
 	void Pause();
 	void Reset();
 
 	bool IsPaused() const;
+	bool IsGhostCollide() const;
 	bool IsGameOver() const;
 	int GetScore() const;
 	int GetHighScore() const;
 
 	const std::array<std::array<TetraminoType, HEIGHT>, WIDTH>& GetGrid() const;
 	const Tetramino* GetCurrentTetramino() const;
+	const Tetramino* GetGhostTetramino() const;
 	const Tetramino* GetNextTetramino() const;
 private:
 	std::unique_ptr<Tetramino> CreateRandomTetramino();
@@ -42,9 +46,10 @@ private:
 
 	std::unique_ptr<Tetramino> m_currentTetramino;
 	std::unique_ptr<Tetramino> m_nextTetramino;
+	std::unique_ptr<Tetramino> m_ghostTetramino;
 
 	std::mt19937 m_rng;
-	std::uniform_int_distribution<int> m_distribution { 0, 6 };
+	std::uniform_int_distribution<int> m_distribution { 1, 7 };
 
 	int m_score = 0;
 	bool m_gameOver = false;

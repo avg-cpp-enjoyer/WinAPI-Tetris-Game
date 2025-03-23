@@ -56,6 +56,7 @@ TetrisWindow::~TetrisWindow() {
 	DeleteObject(m_bgBrush);
 	DeleteObject(m_uiElemBgBrush);
 	DeleteObject(m_borderPen);
+	CleanupBackBuffer();
 }
 
 PCWSTR TetrisWindow::ClassName() const {
@@ -70,9 +71,6 @@ LRESULT TetrisWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		return 0;
 	case WM_DESTROY:
 		KillTimer(m_hWnd, 1);
-		DeleteObject(m_hFont);
-		DeleteObject(m_gridBrush);
-		CleanupBackBuffer();
 		PostQuitMessage(0);
 		return 0;
 	case WM_CLOSE:
@@ -125,26 +123,35 @@ void TetrisWindow::OnPaint() {
 		for (int x = 0; x < GameField::WIDTH; x++) {
 			TetraminoType tetraminoType = m_gameField.GetGrid()[x][y];
 			if (tetraminoType != TetraminoType::TETRAMINO_NONE) {
-				if (auto* bitmap = ResourceManager::GetTetraminoBitmap(tetraminoType)) {
-					graphics.DrawImage(bitmap,
-						m_gridOffsetX + x * m_blockSize,
-						m_gridOffsetY + y * m_blockSize,
-						m_blockSize, m_blockSize);
-				}
+				const auto bitmap = ResourceManager::GetTetraminoBitmap(tetraminoType);
+				graphics.DrawImage(bitmap,
+					m_gridOffsetX + x * m_blockSize,
+					m_gridOffsetY + y * m_blockSize,
+					m_blockSize, m_blockSize);
 			}
 		}
 	}
 
-	if (const auto tetramino = m_gameField.GetCurrentTetramino()) {
-		TetraminoType tetraminoType = tetramino->GetType();
-		if (auto* bitmap = ResourceManager::GetTetraminoBitmap(tetraminoType)) {
-			for (const auto& block : tetramino->GetTetramino()) {
-				vec2 pos = tetramino->GetPos() + block;
-				graphics.DrawImage(bitmap,
-					m_gridOffsetX + pos.x * m_blockSize,
-					m_gridOffsetY + pos.y * m_blockSize,
-					m_blockSize, m_blockSize);
-			}
+	const auto tetramino = m_gameField.GetCurrentTetramino();
+	const auto bitmap = ResourceManager::GetTetraminoBitmap(tetramino->GetType());
+	for (const auto& block : tetramino->GetTetramino()) {
+		vec2 pos = tetramino->GetPos() + block;
+		graphics.DrawImage(bitmap,
+			m_gridOffsetX + pos.x * m_blockSize,
+			m_gridOffsetY + pos.y * m_blockSize,
+			m_blockSize, m_blockSize);
+	}
+		
+
+	if (!m_gameField.IsGhostCollide()) {
+		const auto ghost = m_gameField.GetGhostTetramino();
+		const auto ghostBitmap = ResourceManager::GetTetraminoBitmap(TetraminoType::TETRAMINO_GHOST);
+		for (const auto& block : ghost->GetTetramino()) {
+			vec2 pos = ghost->GetPos() + block;
+			graphics.DrawImage(ghostBitmap,
+				m_gridOffsetX + pos.x * m_blockSize,
+				m_gridOffsetY + pos.y * m_blockSize,
+				m_blockSize, m_blockSize);
 		}
 	}
 
@@ -183,6 +190,7 @@ void TetrisWindow::OnKeyDown(WPARAM key) {
 		break;
 	}
 
+	m_gameField.UpdateGhostPos();
 	UpdateWnd();
 }
 
@@ -211,13 +219,7 @@ void TetrisWindow::DrawRoundedText(HDC hdc, RECT rect, const std::wstring& text)
 	SetBkMode(hdc, TRANSPARENT);
 	SetTextColor(hdc, s_textColor);
 
-	SIZE textSize;
-	GetTextExtentPoint32W(hdc, text.c_str(), static_cast<int>(text.length()), &textSize);
-
-	const int posx = rect.left + (rect.right - rect.left - textSize.cx) / 2;
-	const int posy = rect.top + (rect.bottom - rect.top - textSize.cy) / 2;
-
-	TextOut(hdc, posx, posy, text.c_str(), static_cast<int>(text.length()));
+	DrawText(hdc, text.c_str(), -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
 	SelectObject(hdc, oldBrush);
 	SelectObject(hdc, oldPen);
@@ -254,57 +256,52 @@ void TetrisWindow::DrawNextTetraminoWnd(HDC hdc, RECT rect) {
 	SelectObject(hdc, hOldBrush);
 	SelectObject(hdc, hOldPen);
 
-	SIZE textSize;
-	GetTextExtentPoint32W(hdc, L"Next: ", 5, &textSize);
-	int posy = rect.top - 2 + (nextTetraminoRectInner.top - rect.top - textSize.cy) / 2;
+	RECT textRect = {rect.left, rect.top, rect.right, nextTetraminoRectInner.top};
 
 	SelectObject(hdc, m_hFont);
 	SetBkMode(hdc, TRANSPARENT);
 	SetTextColor(hdc, s_textColor);
-	TextOut(hdc, rect.left + padding, posy, L"Next:", 5);
-
+	DrawText(hdc, L"Next", -1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
 	Gdiplus::Graphics graphics(hdc);
 
-	if (const auto tetramino = m_gameField.GetNextTetramino()) {
-		TetraminoType tetraminoType = tetramino->GetType();
-		if (auto* bitmap = ResourceManager::GetTetraminoBitmap(tetraminoType)) {
-			for (const auto& block : tetramino->GetTetramino()) {
-				vec2 pos = tetramino->GetPos() + block;
-				int offsetX = 0;
-				int offsetY = 0;
+	const auto tetramino = m_gameField.GetNextTetramino();
+	TetraminoType tetraminoType = tetramino->GetType();
+	const auto bitmap = ResourceManager::GetTetraminoBitmap(tetraminoType);
+	for (const auto& block : tetramino->GetTetramino()) {
+		vec2 pos = tetramino->GetPos() + block;
+		int offsetX = 0;
+		int offsetY = 0;
 
-				switch (tetraminoType) {
-				case TetraminoType::TETRAMINO_I:
-					offsetX = static_cast<int>(-77.0f * m_scaleFactor);
-					offsetY = static_cast<int>(40.0f * m_scaleFactor);
-					break;
-				case TetraminoType::TETRAMINO_J:
-					offsetX = static_cast<int>(-47.0f * m_scaleFactor);
-					offsetY = static_cast<int>(9.0f * m_scaleFactor);
-					break;
-				case TetraminoType::TETRAMINO_L:
-					offsetX = static_cast<int>(-77.0f * m_scaleFactor);
-					offsetY = static_cast<int>(9.0f * m_scaleFactor);
-					break;
-				case TetraminoType::TETRAMINO_O:
-					offsetX = static_cast<int>(-48.0f * m_scaleFactor);
-					offsetY = static_cast<int>(25.0f * m_scaleFactor);
-					break;
-				case TetraminoType::TETRAMINO_S:
-				case TetraminoType::TETRAMINO_Z:
-				case TetraminoType::TETRAMINO_T:
-					offsetX = static_cast<int>(-62.0f * m_scaleFactor);
-					offsetY = static_cast<int>(25.0f * m_scaleFactor);
-					break;
-				}
-
-				graphics.DrawImage(bitmap,
-					nextTetraminoRectInner.left + offsetX + pos.x * m_blockSize,
-					nextTetraminoRectInner.top + offsetY + pos.y * m_blockSize,
-					m_blockSize, m_blockSize);
-			}
+		switch (tetraminoType) {
+		case TetraminoType::TETRAMINO_I:
+			offsetX = static_cast<int>(-77.0f * m_scaleFactor);
+			offsetY = static_cast<int>(40.0f * m_scaleFactor);
+			break;
+		case TetraminoType::TETRAMINO_J:
+			offsetX = static_cast<int>(-47.0f * m_scaleFactor);
+			offsetY = static_cast<int>(9.0f * m_scaleFactor);
+			break;
+		case TetraminoType::TETRAMINO_L:
+			offsetX = static_cast<int>(-77.0f * m_scaleFactor);
+			offsetY = static_cast<int>(9.0f * m_scaleFactor);
+			break;
+		case TetraminoType::TETRAMINO_O:
+			offsetX = static_cast<int>(-46.0f * m_scaleFactor);
+			offsetY = static_cast<int>(25.0f * m_scaleFactor);
+			break;
+		case TetraminoType::TETRAMINO_S:
+		case TetraminoType::TETRAMINO_Z: 
+		case TetraminoType::TETRAMINO_T:
+			offsetX = static_cast<int>(-62.0f * m_scaleFactor);
+			offsetY = static_cast<int>(25.0f * m_scaleFactor);
+			break;
 		}
+
+		graphics.DrawImage(bitmap,
+			nextTetraminoRectInner.left + offsetX + pos.x * m_blockSize,
+			nextTetraminoRectInner.top + offsetY + pos.y * m_blockSize,
+			m_blockSize, m_blockSize);
 	}
 }
 
