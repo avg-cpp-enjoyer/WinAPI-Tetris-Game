@@ -1,345 +1,352 @@
 ﻿#include "TetrisWindow.h"
 
-TetrisWindow::TetrisWindow() {
-	m_gridBrush = CreateSolidBrush(RGB(50, 50, 50));
-	m_bgBrush = CreateSolidBrush(RGB(30, 30, 30));
-	m_uiElemBgBrush = CreateSolidBrush(RGB(40, 40, 40));
-	m_borderPen = CreatePen(PS_SOLID, 0, RGB(80, 80, 80));
-
-	m_scaleFactor = GetScreenDpi() / 96.0f;
-
-	m_hFont = CreateFont(static_cast<int>(24 * m_scaleFactor), 0, 0, 0, FW_NORMAL, false, false, false,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Bahnschrift");
-
-	m_blockSize       = static_cast<int>(30.0f  * m_scaleFactor);
-	m_gridOffsetX     = static_cast<int>(20.0f  * m_scaleFactor);
-	m_gridOffsetY     = static_cast<int>(20.0f  * m_scaleFactor);
-	m_uiElemWidth     = static_cast<int>(168.0f * m_scaleFactor);
-	m_uiElemHeight    = static_cast<int>(44.0f  * m_scaleFactor);
-	m_uiElemCornerRad = static_cast<int>(10.0f  * m_scaleFactor);
-	m_uiElemSpacing   = static_cast<int>(15.0f  * m_scaleFactor);
-	m_nextWndHeight   = static_cast<int>(168.0f * m_scaleFactor);
-	windowWidth       = static_cast<int>(544.0f * m_scaleFactor);
-	windowHeight      = static_cast<int>(678.0f * m_scaleFactor);
-
-	m_rcGameField = {
-		m_gridOffsetX, m_gridOffsetY,
-		m_gridOffsetX + GameField::WIDTH * m_blockSize,
-		m_gridOffsetY + GameField::HEIGHT * m_blockSize
-	};
-
-	m_rcScore = {
-		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize,
-		m_gridOffsetY + m_nextWndHeight + m_uiElemSpacing,
-		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize + m_uiElemWidth,
-		m_gridOffsetY + m_nextWndHeight + m_uiElemSpacing + m_uiElemHeight
-	};
-
-	m_rcHighScore = {
-		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize,
-		m_gridOffsetY + m_nextWndHeight + m_uiElemSpacing * 2 + m_uiElemHeight,
-		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize + m_uiElemWidth,
-		m_gridOffsetY + m_nextWndHeight + m_uiElemSpacing * 2 + m_uiElemHeight * 2
-	};
-
-	m_rcNextTetramino = {
-		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize, m_gridOffsetY,
-		m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize + m_uiElemWidth,
-		m_gridOffsetY + m_nextWndHeight
-	};
-}
-
-TetrisWindow::~TetrisWindow() {
-	DeleteObject(m_hFont);
-	DeleteObject(m_gridBrush);
-	DeleteObject(m_bgBrush);
-	DeleteObject(m_uiElemBgBrush);
-	DeleteObject(m_borderPen);
-	CleanupBackBuffer();
-}
-
-PCWSTR TetrisWindow::ClassName() const {
+const wchar_t* TetrisWindow::ClassName() const {
 	return L"TetrisWindowClass";
 }
 
-LRESULT TetrisWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	switch (uMsg) {
+intptr_t TetrisWindow::HandleMessage(uint32_t msg, uintptr_t wParam, intptr_t lParam) {
+	switch (msg) {
+	case WM_NCCALCSIZE:
+		return 0;
+	case WM_NCHITTEST:
+		return OnNcHitTest(lParam);
 	case WM_CREATE:
-		SetTimer(m_hWnd, 1, 500, nullptr);
-		AddButtons();
-		return 0;
-	case WM_DESTROY:
-		KillTimer(m_hWnd, 1);
-		PostQuitMessage(0);
-		return 0;
-	case WM_CLOSE:
-		DestroyWindow(m_hWnd);
-		break;
-	case WM_PAINT:
-		OnPaint();
+		OnCreate();
 		return 0;
 	case WM_KEYDOWN:
 		OnKeyDown(wParam);
 		return 0;
-	case WM_TIMER:
-		if (!m_gameField.IsGameOver()) {
-			UpdateGame();
-		} else {
-			CreateGameOverWindow();
-		}
-		break;
+	case WM_APP_GAMEOVER:
+		OnGameOver();
+		return 0;
+	case WM_DESTROY:
+		OnDestroy();
 	}
-
-	return DefWindowProc(m_hWnd, uMsg, wParam, lParam);
+	return DefWindowProc(m_window, msg, wParam, lParam);
 }
 
-void TetrisWindow::OnPaint() {
-	PAINTSTRUCT ps;
-	HDC hdc = BeginPaint(m_hWnd, &ps);
+void TetrisWindow::Exec(int cmdShow) {
+	ShowWindow(m_window, cmdShow);
+	MSG msg;
+	while (GetMessage(&msg, nullptr, 0, 0)) {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+}
 
-	RECT rcClient;
-	GetClientRect(m_hWnd, &rcClient);
-	CreateBackBuffer(rcClient.right, rcClient.bottom);
-	FillRect(m_hMemDC, &rcClient, m_bgBrush);
+void TetrisWindow::InitD3D() {
+	uint32_t flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+#ifdef _DEBUG
+	flags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+	HR_LOG(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flags,
+		nullptr, 0, D3D11_SDK_VERSION, &m_d3dDevice, nullptr, &m_d3dContext));
 
-	HGDIOBJ hOldPen = SelectObject(m_hMemDC, m_borderPen);
-	HGDIOBJ hOldBrush = SelectObject(m_hMemDC, GetStockObject(HOLLOW_BRUSH));
+	HR_LOG(m_d3dDevice.As(&m_dxgiDevice));
 
-	Rectangle(
-		m_hMemDC,
-		m_rcGameField.left,
-		m_rcGameField.top,
-		m_rcGameField.right,
-		m_rcGameField.bottom
-	);
+	Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+	HR_LOG(m_dxgiDevice->GetAdapter(&adapter));
+	Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
+	HR_LOG(adapter->GetParent(IID_PPV_ARGS(&factory2)));
 
-	SelectObject(m_hMemDC, hOldPen);
-	SelectObject(m_hMemDC, hOldBrush);
+	RECT rc; 
+	GetClientRect(m_window, &rc);
 
-	Gdiplus::Graphics graphics(m_hMemDC);
+	DXGI_SWAP_CHAIN_DESC1 scDesc = {};
+	scDesc.Width        = rc.right;
+	scDesc.Height       = rc.bottom;
+	scDesc.Format       = DXGI_FORMAT_B8G8R8A8_UNORM;
+	scDesc.SampleDesc   = { 1, 0 };
+	scDesc.BufferUsage  = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	scDesc.BufferCount  = 2;
+	scDesc.SwapEffect   = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+	scDesc.AlphaMode    = DXGI_ALPHA_MODE_PREMULTIPLIED;
+	scDesc.Scaling      = DXGI_SCALING_STRETCH;
 
-	for (int y = 0; y < GameField::HEIGHT; y++) {
-		for (int x = 0; x < GameField::WIDTH; x++) {
-			TetraminoType tetraminoType = m_gameField.GetGrid()[x][y];
-			if (tetraminoType != TetraminoType::TETRAMINO_NONE) {
-				const auto bitmap = ResourceManager::GetTetraminoBitmap(tetraminoType);
-				graphics.DrawImage(bitmap,
-					m_gridOffsetX + x * m_blockSize,
-					m_gridOffsetY + y * m_blockSize,
-					m_blockSize, m_blockSize);
+	HR_LOG(factory2->CreateSwapChainForComposition(m_d3dDevice.Get(), &scDesc, nullptr, &m_swapChain));
+}
+
+void TetrisWindow::InitD2D() {
+	D2D1_FACTORY_OPTIONS opts = {};
+#ifdef _DEBUG
+	opts.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+#endif
+	HR_LOG(D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, __uuidof(ID2D1Factory1), &opts,
+		reinterpret_cast<void**>(m_d2dFactory.GetAddressOf())));
+
+	HR_LOG(m_d2dFactory->CreateDevice(m_dxgiDevice.Get(), &m_d2dDevice));
+
+	Microsoft::WRL::ComPtr<ID2D1DeviceContext> baseContext;
+	HR_LOG(m_d2dDevice->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_ENABLE_MULTITHREADED_OPTIMIZATIONS, &baseContext));
+	HR_LOG(baseContext.As(&m_d2dContext));
+
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> back;
+	HR_LOG(m_swapChain->GetBuffer(0, IID_PPV_ARGS(&back)));
+	Microsoft::WRL::ComPtr<IDXGISurface> surface;
+	HR_LOG(back.As(&surface));
+
+	D2D1_BITMAP_PROPERTIES1 bitmapProps = D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+		D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED));
+
+	HR_LOG(m_d2dContext->CreateBitmapFromDxgiSurface(surface.Get(), bitmapProps, &m_d2dTarget));
+	m_d2dContext->SetTarget(m_d2dTarget.Get());
+}
+
+void TetrisWindow::InitDComp() {
+	HR_LOG(DCompositionCreateDevice(m_dxgiDevice.Get(), IID_PPV_ARGS(&m_dcompDevice)));
+	HR_LOG(m_dcompDevice->CreateTargetForHwnd(m_window, true, &m_dcompTarget));
+	HR_LOG(m_dcompDevice->CreateVisual(&m_dcompVisual));
+	HR_LOG(m_dcompVisual->SetContent(m_swapChain.Get()));
+	HR_LOG(m_dcompTarget->SetRoot(m_dcompVisual.Get()));
+
+	Microsoft::WRL::ComPtr<IDCompositionVisual2> visual2;
+	if (SUCCEEDED(m_dcompVisual.As(&visual2))) {
+		visual2->SetBitmapInterpolationMode(DCOMPOSITION_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR);
+	}
+
+	HR_LOG(m_dcompDevice->Commit());
+}
+
+void TetrisWindow::InitText() {
+	HR_LOG(CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_wicFactory)));
+
+	HR_LOG(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), 
+		reinterpret_cast<IUnknown**>(m_writeFactory.GetAddressOf())));
+
+	HR_LOG(m_writeFactory->CreateTextFormat(L"Bahnschrift", nullptr, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL, Constants::fontSize, L"", &m_textFormat));
+
+	m_textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+	m_textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+}
+
+void TetrisWindow::InitBrushes() {
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::bgColor, &m_bgBrush));
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::uiColor, &m_uiBrush));
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::borderColor, &m_borderBrush));
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::uiTextColor, &m_textBrush));
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::borderColor, &m_gridBrush));
+}
+
+void TetrisWindow::Cleanup() {
+	m_swapChain   .Reset();
+	m_d2dTarget   .Reset();
+	m_d2dContext  .Reset();
+	m_d2dDevice   .Reset();
+	m_dxgiDevice  .Reset();
+	m_d3dContext  .Reset();
+	m_d3dDevice   .Reset();
+	m_d2dFactory  .Reset();
+	m_wicFactory  .Reset();
+	m_writeFactory.Reset();
+	m_textFormat  .Reset();
+	m_bgBrush     .Reset();
+	m_uiBrush     .Reset();
+	m_borderBrush .Reset();
+	m_textBrush   .Reset();
+	m_gridBrush   .Reset();
+}
+
+void TetrisWindow::RenderLoop() {
+	constexpr double targetFPS = 144.0;
+	const auto frameDuration = std::chrono::duration<double>(1.0 / targetFPS);
+	auto lastTime = std::chrono::steady_clock::now();
+	auto nextFrame = lastTime + frameDuration;
+
+	while (m_renderRunning.load(std::memory_order_relaxed)) {
+		std::this_thread::sleep_until(nextFrame);
+		auto now = std::chrono::steady_clock::now();
+		std::chrono::duration<double> delta = now - lastTime;
+		lastTime = now;
+		nextFrame += frameDuration;
+		{
+			std::shared_lock lk(m_gameFieldMutex);
+			m_renderer->UpdateAnimations(static_cast<float>(delta.count()), m_gameField);
+			auto& cur = m_gameField.GetCurrentTetramino();
+			if (!cur.IsAnimating() && cur.IsDropping()) {
+				m_hardDropDone.store(true, std::memory_order_relaxed);
+				m_cmdCV.notify_one();
 			}
 		}
+		RenderFrame();
 	}
-
-	const auto tetramino = m_gameField.GetCurrentTetramino();
-	const auto bitmap = ResourceManager::GetTetraminoBitmap(tetramino->GetType());
-	for (const auto& block : tetramino->GetTetramino()) {
-		vec2 pos = tetramino->GetPos() + block;
-		graphics.DrawImage(bitmap,
-			m_gridOffsetX + pos.x * m_blockSize,
-			m_gridOffsetY + pos.y * m_blockSize,
-			m_blockSize, m_blockSize);
-	}
-		
-
-	if (!m_gameField.IsGhostCollide()) {
-		const auto ghost = m_gameField.GetGhostTetramino();
-		const auto ghostBitmap = ResourceManager::GetTetraminoBitmap(TetraminoType::TETRAMINO_GHOST);
-		for (const auto& block : ghost->GetTetramino()) {
-			vec2 pos = ghost->GetPos() + block;
-			graphics.DrawImage(ghostBitmap,
-				m_gridOffsetX + pos.x * m_blockSize,
-				m_gridOffsetY + pos.y * m_blockSize,
-				m_blockSize, m_blockSize);
-		}
-	}
-
-	DrawNextTetraminoWnd(m_hMemDC, m_rcNextTetramino);
-
-	std::wstring scoreText = L"Score: " + std::to_wstring(m_gameField.GetScore());
-	std::wstring highScoreText = L"High: " + std::to_wstring(m_gameField.GetHighScore());
-
-	DrawRoundedText(m_hMemDC, m_rcScore, scoreText);
-	DrawRoundedText(m_hMemDC, m_rcHighScore, highScoreText);
-
-	BitBlt(hdc, 0, 0, rcClient.right, rcClient.bottom, m_hMemDC, 0, 0, SRCCOPY);
-	EndPaint(m_hWnd, &ps);
 }
 
-void TetrisWindow::OnKeyDown(WPARAM key) {
-	if (m_gameField.IsGameOver() || m_gameField.IsPaused()) {
+void TetrisWindow::LogicLoop() {
+	static constexpr auto tickInterval = std::chrono::duration<double>(0.5);
+	auto now = std::chrono::steady_clock::now();
+	m_nextTick = now + tickInterval;
+
+	std::unique_lock<std::mutex> lock(m_cmdMutex);
+	while (m_logicRunning.load(std::memory_order_relaxed)) {
+		m_cmdCV.wait_until(lock, m_nextTick, [&] {
+			return !m_logicRunning.load() || !m_commands.empty() || m_hardDropDone.load();
+		});
+
+		if (!m_logicRunning.load()) {
+			break;
+		}
+
+		std::deque<Command> commandBuffer;
+		commandBuffer.swap(m_commands);
+		lock.unlock();
+		for (auto cmd : commandBuffer) {
+			ExecuteCommand(cmd);
+		}
+		lock.lock();
+
+		if (m_isPaused.load(std::memory_order_relaxed)) {
+			m_nextTick = std::chrono::steady_clock::now() + tickInterval;
+			continue;
+		}
+
+		if (m_gameField.IsGameOver()) {
+			PostMessage(m_window, WM_APP_GAMEOVER, 0, 0);
+			m_isPaused.store(true);
+			m_nextTick = std::chrono::steady_clock::now() + tickInterval;
+			continue;
+		}
+
+		if (m_hardDropDone.exchange(false)) {
+			{
+				std::shared_lock dropLock(m_gameFieldMutex);
+				m_gameField.LockTetramino();
+			}
+			m_nextTick = std::chrono::steady_clock::now();
+			m_needsRedraw.store(true, std::memory_order_relaxed);
+			continue;
+		}
+
+		now = std::chrono::steady_clock::now();
+		if (now >= m_nextTick) {
+			m_nextTick = now + tickInterval;
+			GravityStep();
+		}
+
+		m_needsRedraw.store(true, std::memory_order_relaxed);
+	}
+}
+
+bool TetrisWindow::GravityStep() {
+	if (m_gameField.GetCurrentTetramino().IsDropping()) {
+		return false;
+	}
+
+	m_gameField.Update();
+	return true;
+}
+
+void TetrisWindow::ExecuteCommand(Command cmd) {
+	if (m_gameField.GetCurrentTetramino().IsDropping()) {
 		return;
 	}
 
-	switch (key) {
-	case VK_LEFT:  
+	std::unique_lock lock(m_gameFieldMutex);
+
+	switch (cmd) {
+	case Command::MoveLeft:  
 		m_gameField.MoveCurrent(Direction::DIRECTION_LEFT); 
 		break;
-	case VK_RIGHT: 
+	case Command::MoveRight: 
 		m_gameField.MoveCurrent(Direction::DIRECTION_RIGHT); 
 		break;
-	case VK_DOWN:  
+	case Command::MoveDown:  
 		m_gameField.MoveCurrent(Direction::DIRECTION_DOWN); 
 		break;
-	case VK_UP:    
+	case Command::Rotate:  
 		m_gameField.RotateCurrent(); 
 		break;
-	case VK_SPACE: 
-		m_gameField.HardDrop(); 
+	case Command::HardDrop:
+		m_gameField.HardDrop();
+		break;
+	case Command::Pause:     
+		PauseGame(); 
 		break;
 	}
 
 	m_gameField.UpdateGhostPos();
-	UpdateWnd();
 }
 
-void TetrisWindow::UpdateGame() {
-	if (!m_gameField.IsGameOver()) {
-		m_gameField.Update();
-		UpdateWnd();
+void TetrisWindow::CreateButtons() {
+	m_pauseButton = std::make_unique<Button>(m_window, L"Pause", Constants::pauseRect, Constants::uiElemCornerRad,
+		false, Constants::uiTextColor, Constants::borderColor, Constants::btnClrDefault,
+		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dContext.Get());
+
+	m_quitButton = std::make_unique<Button>(m_window, L"Quit", Constants::quitRect, Constants::uiElemCornerRad,
+		false, Constants::uiTextColor, Constants::borderColor, Constants::btnClrDefault,
+		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dContext.Get());
+
+	m_pauseButton->SetOnClick([this]() {
+		PauseGame();
+		std::lock_guard<std::mutex> lg(m_cmdMutex);
+		m_commands.clear();
+	});
+
+	m_quitButton->SetOnClick([this]() {
+		PostMessage(m_window, WM_DESTROY, 0, 0);
+	});
+}
+
+void TetrisWindow::CreateTitleButtons() {
+	m_closeButton = std::make_unique<TitleButton>(m_window, L"✕", Constants::closeRect, Constants::windowCornerRad,
+		true, Constants::uiTextColor, Constants::uiColor, Constants::btnClrDefault,
+		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dContext.Get());
+
+	m_minimizeButton = std::make_unique<Button>(m_window, L"⤵", Constants::minimizeRect, 0.0f,
+		true, Constants::uiTextColor, Constants::uiColor, Constants::btnClrDefault,
+		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dContext.Get());
+
+	m_closeButton->SetOnClick([this]() {
+		PostMessage(m_window, WM_CLOSE, 0, 0);
+	});
+
+	m_minimizeButton->SetOnClick([this]() {
+		ShowWindow(m_window, SW_MINIMIZE);
+	});
+}
+
+intptr_t TetrisWindow::OnNcHitTest(intptr_t lParam) const {
+	POINT pt = { LOWORD(lParam), HIWORD(lParam) };
+	ScreenToClient(m_window, &pt);
+
+	if (pt.y < Constants::titleBarHeight) {
+		return HTCAPTION;
 	}
+
+	return DefWindowProc(m_window, WM_NCHITTEST, 0, lParam);
 }
 
-void TetrisWindow::UpdateWnd() const {
-	InvalidateRect(m_hWnd, &m_rcGameField, false);
-	InvalidateRect(m_hWnd, &m_rcNextTetramino, false);
-	InvalidateRect(m_hWnd, &m_rcScore, false);
-	InvalidateRect(m_hWnd, &m_rcHighScore, false);
-}
+void TetrisWindow::OnKeyDown(uintptr_t key) {
+	std::lock_guard lock(m_cmdMutex);
 
-void TetrisWindow::DrawRoundedText(HDC hdc, RECT rect, const std::wstring& text) {
-	SelectObject(hdc, m_hFont);
-
-	HGDIOBJ oldBrush = SelectObject(hdc, m_uiElemBgBrush);
-	HGDIOBJ oldPen = SelectObject(hdc, m_borderPen);
-
-	RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, m_uiElemCornerRad, m_uiElemCornerRad);
-
-	SetBkMode(hdc, TRANSPARENT);
-	SetTextColor(hdc, s_textColor);
-
-	DrawText(hdc, text.c_str(), -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-	SelectObject(hdc, oldBrush);
-	SelectObject(hdc, oldPen);
-}
-
-void TetrisWindow::DrawNextTetraminoWnd(HDC hdc, RECT rect) {
-	HGDIOBJ hOldBrush = SelectObject(hdc, m_uiElemBgBrush);
-	HGDIOBJ hOldPen = SelectObject(hdc, m_borderPen);
-
-	RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, m_uiElemCornerRad, m_uiElemCornerRad);
-
-	SelectObject(hdc, hOldBrush);
-	SelectObject(hdc, hOldPen);
-
-	const int padding = static_cast<int>(10.0f * m_scaleFactor);
-	RECT nextTetraminoRectInner = {
-		rect.left + padding, rect.top + static_cast<int>(40.0f * m_scaleFactor) + padding,
-		rect.right - padding, rect.bottom - padding
-	};
-
-	hOldBrush = SelectObject(hdc, m_bgBrush);
-	hOldPen = SelectObject(hdc, m_borderPen);
-
-	RoundRect(
-		hdc,
-		nextTetraminoRectInner.left,
-		nextTetraminoRectInner.top,
-		nextTetraminoRectInner.right,
-		nextTetraminoRectInner.bottom,
-		m_uiElemCornerRad,
-		m_uiElemCornerRad
-	);
-
-	SelectObject(hdc, hOldBrush);
-	SelectObject(hdc, hOldPen);
-
-	RECT textRect = {rect.left, rect.top, rect.right, nextTetraminoRectInner.top};
-
-	SelectObject(hdc, m_hFont);
-	SetBkMode(hdc, TRANSPARENT);
-	SetTextColor(hdc, s_textColor);
-	DrawText(hdc, L"Next", -1, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-	Gdiplus::Graphics graphics(hdc);
-
-	const auto tetramino = m_gameField.GetNextTetramino();
-	TetraminoType tetraminoType = tetramino->GetType();
-	const auto bitmap = ResourceManager::GetTetraminoBitmap(tetraminoType);
-	for (const auto& block : tetramino->GetTetramino()) {
-		vec2 pos = tetramino->GetPos() + block;
-		int offsetX = 0;
-		int offsetY = 0;
-
-		switch (tetraminoType) {
-		case TetraminoType::TETRAMINO_I:
-			offsetX = static_cast<int>(-77.0f * m_scaleFactor);
-			offsetY = static_cast<int>(40.0f * m_scaleFactor);
-			break;
-		case TetraminoType::TETRAMINO_J:
-			offsetX = static_cast<int>(-47.0f * m_scaleFactor);
-			offsetY = static_cast<int>(9.0f * m_scaleFactor);
-			break;
-		case TetraminoType::TETRAMINO_L:
-			offsetX = static_cast<int>(-77.0f * m_scaleFactor);
-			offsetY = static_cast<int>(9.0f * m_scaleFactor);
-			break;
-		case TetraminoType::TETRAMINO_O:
-			offsetX = static_cast<int>(-46.0f * m_scaleFactor);
-			offsetY = static_cast<int>(25.0f * m_scaleFactor);
-			break;
-		case TetraminoType::TETRAMINO_S:
-		case TetraminoType::TETRAMINO_Z: 
-		case TetraminoType::TETRAMINO_T:
-			offsetX = static_cast<int>(-62.0f * m_scaleFactor);
-			offsetY = static_cast<int>(25.0f * m_scaleFactor);
-			break;
-		}
-
-		graphics.DrawImage(bitmap,
-			nextTetraminoRectInner.left + offsetX + pos.x * m_blockSize,
-			nextTetraminoRectInner.top + offsetY + pos.y * m_blockSize,
-			m_blockSize, m_blockSize);
+	switch (key) {
+	case VK_LEFT:  
+		m_commands.push_back(Command::MoveLeft); break;
+	case VK_RIGHT: 
+		m_commands.push_back(Command::MoveRight);break;
+	case VK_DOWN:  
+		m_commands.push_back(Command::MoveDown); break;
+	case VK_UP:    
+		m_commands.push_back(Command::Rotate); break;
+	case VK_SPACE:
+		m_commands.push_back(Command::HardDrop); break;
 	}
+
+	m_cmdCV.notify_one();
 }
 
-void TetrisWindow::AddButtons() {
-	COLORREF clrDefault = RGB(40, 40, 40);
-	COLORREF clrHovered = RGB(30, 30, 30);
-	COLORREF clrClicked = RGB(40, 40, 40);
+bool TetrisWindow::CreateGameOverWindow() {
+	RECT rcMain;
+	GetWindowRect(m_window, &rcMain);
 
-	const int buttonX = m_gridOffsetX * 2 + GameField::WIDTH * m_blockSize;
-	const int pauseBtnY = m_gridOffsetY + GameField::HEIGHT * m_blockSize - m_uiElemHeight * 2 - m_uiElemSpacing;
-	const int quitBtnY = m_gridOffsetY + GameField::HEIGHT * m_blockSize - m_uiElemHeight;
+	const int x = rcMain.left + (rcMain.right - rcMain.left - static_cast<int>(Constants::gameOverWndWidth)) / 2;
+	const int y = rcMain.top + (rcMain.bottom - rcMain.top - static_cast<int>(Constants::gameOverWndHeight)) / 2;
 
-	m_pauseButton = std::make_unique<Button>(m_hWnd, L"Pause", buttonX, pauseBtnY, m_uiElemWidth, m_uiElemHeight, m_uiElemCornerRad, 
-		IDC_BUTTON_1, m_hFont, s_textColor, clrDefault, clrClicked, clrHovered);
-	m_quitButton = std::make_unique<Button>(m_hWnd, L"Quit", buttonX, quitBtnY, m_uiElemWidth, m_uiElemHeight, m_uiElemCornerRad,
-		IDC_BUTTON_2, m_hFont, s_textColor, clrDefault, clrClicked, clrHovered);
+	GameOverWindow gameOver(m_gameField.GetScore(), GameField::GetHighScore());
+	gameOver.Create(L"Game Over", WS_POPUP | WS_VISIBLE, WS_EX_LAYERED,
+		x, y, static_cast<int>(Constants::gameOverWndWidth), static_cast<int>(Constants::gameOverWndHeight));
 
-	m_quitButton->SetOnClick([]() { PostQuitMessage(0); });
-	m_pauseButton->SetOnClick([this]() { PauseGame(); });
-}
-
-void TetrisWindow::CreateGameOverWindow() {
-	KillTimer(m_hWnd, 1);
-
-	GameOverWindow gameOver(m_gameField.GetScore(), m_gameField.GetHighScore());
-	gameOver.Create(L"Game Over", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-		0, 0, 0, static_cast<int>(350.0f * m_scaleFactor), static_cast<int>(250.0f * m_scaleFactor));
-
-	EnableWindow(m_hWnd, false);
-
-	RECT rcMain, rcGameOver;
-	GetWindowRect(m_hWnd, &rcMain);
-	GetWindowRect(gameOver.Window(), &rcGameOver);
-
-	const int x = rcMain.left + (rcMain.right - rcMain.left - (rcGameOver.right - rcGameOver.left)) / 2;
-	const int y = rcMain.top + (rcMain.bottom - rcMain.top - (rcGameOver.bottom - rcGameOver.top)) / 2;
-
-	SetWindowPos(gameOver.Window(), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	EnableWindow(m_window, false);
 
 	ShowWindow(gameOver.Window(), SW_SHOW);
 	UpdateWindow(gameOver.Window());
@@ -350,63 +357,108 @@ void TetrisWindow::CreateGameOverWindow() {
 		DispatchMessage(&msg);
 	}
 
-	EnableWindow(m_hWnd, TRUE);
-	SetForegroundWindow(m_hWnd);
-	SetFocus(m_hWnd);
+	EnableWindow(m_window, true);
+	SetForegroundWindow(m_window);
 
-	if (gameOver.ShouldRestart()) {
-		m_gameField.Reset(); 
-		SetTimer(m_hWnd, 1, 500, nullptr);
-		InvalidateRect(m_hWnd, nullptr, true);
-	}
+	return gameOver.ShouldRestart();
+}
+
+void TetrisWindow::RestartCallback() {
+	m_waitingForRestart.store(false, std::memory_order_relaxed);
+	m_restartCV.notify_one();
+	m_waitingForRestart = true;
+}
+
+void TetrisWindow::RenderFrame() {
+	m_d2dContext->BeginDraw();
+	m_d2dContext->Clear(D2D1::ColorF(0, 0, 0, 0));
+
+	RECT rc; 
+	GetClientRect(m_window, &rc);
+	m_renderer->RenderMainWindow(rc, m_gameField);
+
+	m_pauseButton->Draw(); 
+	m_quitButton->Draw();
+	m_minimizeButton->Draw(); 
+	m_closeButton->Draw();
+
+	m_d2dContext->EndDraw();
+	m_swapChain->Present(1, 0);
 }
 
 void TetrisWindow::PauseGame() {
-	m_gameField.Pause();
+	bool newState = !m_isPaused.load();
+	m_isPaused.store(newState);
 
-	if (m_gameField.IsPaused()) {
+	if (newState) {
 		m_pauseButton->SetText(L"Continue");
-		KillTimer(m_hWnd, 1);
 	} else {
 		m_pauseButton->SetText(L"Pause");
-		SetTimer(m_hWnd, 1, 500, nullptr);
+	}
+}
+
+void TetrisWindow::OnCreate() {
+	InitD3D();
+	InitD2D();
+	InitDComp();
+	InitText();
+	InitBrushes();
+
+	RECT rect;
+	GetClientRect(m_window, &rect);
+
+	m_renderer = std::make_unique<Renderer>(m_d2dContext.Get(), m_d2dFactory.Get(), m_bgBrush.Get(),
+		m_borderBrush.Get(), m_uiBrush.Get(), m_textBrush.Get(), m_textFormat.Get(), rect);
+
+	ResourceManager::Initialize(m_d2dContext.Get(), m_wicFactory.Get());
+	CreateButtons();
+	CreateTitleButtons();
+
+	m_logicRunning.store(true, std::memory_order_relaxed);
+	m_logicThread = std::thread(&TetrisWindow::LogicLoop, this);
+
+	m_renderRunning.store(true, std::memory_order_relaxed);
+	m_renderThread = std::thread(&TetrisWindow::RenderLoop, this);
+}
+
+void TetrisWindow::OnDestroy() {
+	m_logicRunning.store(false, std::memory_order_relaxed);
+	m_cmdCV.notify_all();
+
+	if (m_logicThread.joinable()) {
+		m_logicThread.join();
 	}
 
-	InvalidateRect(m_hWnd, &m_rcGameField, false);
-	SetFocus(m_hWnd);
-}
-
-void TetrisWindow::CreateBackBuffer(int width, int height) {
-	HDC hdc = GetDC(m_hWnd);
-
-	if (m_hMemDC) {
-		if (width == m_lastWidth && height == m_lastHeight) return;
-		CleanupBackBuffer();
+	m_renderRunning.store(false, std::memory_order_relaxed);
+	if (m_renderThread.joinable()) {
+		m_renderThread.join();
 	}
 
-	m_hMemDC = CreateCompatibleDC(hdc);
-	m_hMemBitmap = CreateCompatibleBitmap(hdc, width, height);
-	SelectObject(m_hMemDC, m_hMemBitmap);
+	m_pauseButton.reset();
+	m_quitButton.reset();
+	m_minimizeButton.reset();
+	m_closeButton.reset();
+	m_renderer.reset();
 
-	m_lastWidth = width;
-	m_lastHeight = height;
-
-	ReleaseDC(m_hWnd, hdc);
+	ResourceManager::Shutdown();
+	Cleanup();
+	PostQuitMessage(0);
 }
 
-void TetrisWindow::CleanupBackBuffer() {
-	if (m_hMemBitmap) DeleteObject(m_hMemBitmap);
-	if (m_hMemDC) DeleteDC(m_hMemDC);
-	m_hMemDC = nullptr;
-	m_hMemBitmap = nullptr;
-}
+void TetrisWindow::OnGameOver() {
+	m_isPaused.store(true);
+	m_cmdCV.notify_all();
 
-float TetrisWindow::GetScreenDpi() const {
-	UINT dpiX = 0;
-	UINT dpiY = 0;
+	if (!CreateGameOverWindow()) {
+		PostMessage(m_window, WM_DESTROY, 0, 0);
+	}
 
-	HMONITOR hMonitor = MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
-	HRESULT hRes = GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+	{
+		std::lock_guard lock(m_gameFieldMutex);
+		m_gameField.Reset();
+	}
 
-	return SUCCEEDED(hRes) ? static_cast<float>(dpiX) : 96.0f;
+	m_isPaused.store(false);
+	m_cmdCV.notify_all();
+	m_nextTick = std::chrono::steady_clock::now();
 }

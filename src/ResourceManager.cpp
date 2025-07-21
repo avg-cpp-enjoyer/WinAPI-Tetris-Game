@@ -1,25 +1,19 @@
 ﻿#include "ResourceManager.h"
-#include <string>
 
-Gdiplus::Bitmap* ResourceManager::GetTetraminoBitmap(TetraminoType type) {
+void ResourceManager::Initialize(ID2D1DeviceContext* context, IWICImagingFactory* wic) {
+	GetInstance().InitializeImpl(context, wic);
+}
+
+ID2D1Bitmap* ResourceManager::GetTetraminoBitmap(TetraminoType type) {
 	return GetInstance().GetTetraminoBitmapImpl(type);
 }
 
 void ResourceManager::ClearResources() {
-	GetInstance().ClearResourcesImpl();
+	GetInstance().m_bitmaps.clear();
 }
 
-ResourceManager::ResourceManager() {
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_I,     BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_J,     BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_L,     BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_O,     BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_S,     BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_Z,     BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_T,     BitmapPtr(nullptr, BitmapDeleter()));
-	m_bitmaps.emplace(TetraminoType::TETRAMINO_GHOST, BitmapPtr(nullptr, BitmapDeleter()));
-    
-	LoadResources();
+void ResourceManager::Shutdown() {
+	GetInstance().ShutdownImpl();
 }
 
 ResourceManager& ResourceManager::GetInstance() {
@@ -28,61 +22,68 @@ ResourceManager& ResourceManager::GetInstance() {
 }
 
 void ResourceManager::LoadResources() {
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_I,     MAKEINTRESOURCE(IDB_TETRAMINO_I));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_J,     MAKEINTRESOURCE(IDB_TETRAMINO_J));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_L,     MAKEINTRESOURCE(IDB_TETRAMINO_L));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_O,     MAKEINTRESOURCE(IDB_TETRAMINO_O));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_S,     MAKEINTRESOURCE(IDB_TETRAMINO_S));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_Z,     MAKEINTRESOURCE(IDB_TETRAMINO_Z));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_T,     MAKEINTRESOURCE(IDB_TETRAMINO_T));
-	LoadTetraminoBitmap(TetraminoType::TETRAMINO_GHOST, MAKEINTRESOURCE(IDB_TETRAMINO_GHOST));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_I,     MAKEINTRESOURCEW(IDB_TETRAMINO_I));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_J,     MAKEINTRESOURCEW(IDB_TETRAMINO_J));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_L,     MAKEINTRESOURCEW(IDB_TETRAMINO_L));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_O,     MAKEINTRESOURCEW(IDB_TETRAMINO_O));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_S,     MAKEINTRESOURCEW(IDB_TETRAMINO_S));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_Z,     MAKEINTRESOURCEW(IDB_TETRAMINO_Z));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_T,     MAKEINTRESOURCEW(IDB_TETRAMINO_T));
+	LoadTetraminoBitmap(TetraminoType::TETRAMINO_GHOST, MAKEINTRESOURCEW(IDB_TETRAMINO_GHOST));
 }
 
 void ResourceManager::LoadTetraminoBitmap(TetraminoType type, const wchar_t* resourceName) {
-	HRSRC hRes = FindResource(nullptr, resourceName, L"PNG");
+	HRSRC hRes = FindResourceW(nullptr, resourceName, L"PNG");   
 	if (!hRes) {
-		throw ResourceException("Resource not found: " + std::to_string(static_cast<int>(type)));
+		throw std::runtime_error("Resource not found for TetraminoType");
 	}
 
 	HGLOBAL hData = LoadResource(nullptr, hRes);
 	if (!hData) {
-		throw ResourceException("Failed to load resource: " + std::to_string(GetLastError()));
+		throw std::runtime_error("Failed to LoadResource");
 	}
 
 	void* pData = LockResource(hData);
-	if (!pData) {
-		throw ResourceException("Failed to lock resource");
-	}
-
 	DWORD size = SizeofResource(nullptr, hRes);
-	if (size == 0) {
-		throw ResourceException("Empty resource data");
+
+	Microsoft::WRL::ComPtr<IStream> stream;
+	stream.Attach(SHCreateMemStream(reinterpret_cast<const BYTE*>(pData), size));
+	if (!stream) {
+		throw std::runtime_error("Failed to create memory stream");
 	}
 
-	IStream* pStream = SHCreateMemStream(static_cast<const BYTE*>(pData), size);
-	if (!pStream) {
-		throw ResourceException("Failed to create memory stream");
-	}
+	Microsoft::WRL::ComPtr<IWICBitmapDecoder> decoder;
+	HR_THROW(m_wicFactory->CreateDecoderFromStream(stream.Get(), nullptr, WICDecodeMetadataCacheOnLoad, &decoder), 
+		"WIC create decoder failed");
 
-	Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(pStream);
-	pStream->Release();
+	Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> frame;
+	HR_THROW(decoder->GetFrame(0, &frame), "WIC get frame failed");
 
-	if (bitmap && bitmap->GetLastStatus() == Gdiplus::Ok) {
-		m_bitmaps[type].reset(bitmap);
-	} else {
-		throw ResourceException("Failed to create bitmap from resource");
-	}
+	Microsoft::WRL::ComPtr<IWICFormatConverter> converter;
+	HR_THROW(m_wicFactory->CreateFormatConverter(&converter), "WIC create converter failed");
+
+	HR_THROW(converter->Initialize(frame.Get(), GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone,
+		nullptr, 0.f, WICBitmapPaletteTypeMedianCut), "WIC format converter init failed");
+
+	Microsoft::WRL::ComPtr<ID2D1Bitmap> d2dBitmap;
+	HR_THROW(m_context->CreateBitmapFromWicBitmap(converter.Get(), nullptr, &d2dBitmap), "CreateBitmapFromWicBitmap failed");
+
+	m_bitmaps[type] = std::move(d2dBitmap);
 }
 
-void ResourceManager::ClearResourcesImpl() {
+void ResourceManager::ShutdownImpl() {
 	m_bitmaps.clear();
+	m_context = nullptr;
+	m_wicFactory = nullptr;
 }
 
-Gdiplus::Bitmap* ResourceManager::GetTetraminoBitmapImpl(TetraminoType type) const {
+ID2D1Bitmap* ResourceManager::GetTetraminoBitmapImpl(TetraminoType type) {
 	auto it = m_bitmaps.find(type);
-	if (it != m_bitmaps.end() && it->second) {
-		return it->second.get();
-	}
+	return (it != m_bitmaps.end()) ? it->second.Get() : nullptr;
+}
 
-	return nullptr;
+void ResourceManager::InitializeImpl(ID2D1DeviceContext* context, IWICImagingFactory* wic) {
+	m_context = context;
+	m_wicFactory = wic;
+	LoadResources();
 }

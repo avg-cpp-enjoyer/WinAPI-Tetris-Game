@@ -1,25 +1,23 @@
-#include "TetrisWindow.h"
+﻿#include "TetrisWindow.h"
 
-int APIENTRY wWinMain([[maybe_unused]] _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, [[maybe_unused]] _In_ PWSTR pCmdLine, _In_ int nCmdShow) {
-	Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-	ULONG_PTR gdiplusToken;
-	Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
+int _stdcall wWinMain([[maybe_unused]] _In_ HINSTANCE instance, _In_opt_ HINSTANCE, [[maybe_unused]] _In_ wchar_t* cmdLine, _In_ int cmdShow) {
+	long hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-	TetrisWindow win;
-	if (!win.Create(L"Tetris", WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
-		WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, win.windowWidth, win.windowHeight)) {
+	if (FAILED(hr)) {
+		MessageBox(nullptr, L"CoInitializeEx failed", L"Error", MB_ICONERROR);
+		return -1;
+	}
+
+	Constants::Init();
+
+	TetrisWindow tetris;
+	if (!tetris.Create(L"Tetris", WS_POPUP | WS_VISIBLE, WS_EX_APPWINDOW | WS_EX_NOREDIRECTIONBITMAP, CW_USEDEFAULT, CW_USEDEFAULT,
+		Constants::windowWidth, Constants::windowHeight)) {
 		return 0;
 	}
 
-	ShowWindow(win.Window(), nCmdShow);
+	tetris.Exec(cmdShow);
 
-	MSG msg;
-	while (GetMessage(&msg, nullptr, 0, 0)) {
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-
-	ResourceManager::ClearResources();
-	Gdiplus::GdiplusShutdown(gdiplusToken);
+	CoUninitialize();
 	return 0;
 }

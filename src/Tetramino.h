@@ -1,8 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include "TetraminoTypes.h"
 #include "vec2.h"
-
 #include <array>
 
 enum class Direction {
@@ -14,52 +13,44 @@ enum class Direction {
 class Tetramino {
 public:
 	void Rotate();
+	void UndoRotation();
 	void Move(Direction dir);
 	const std::array<vec2, 4>& GetTetramino() const;
-	vec2 GetPos() const;
-	void SetPos(vec2 pos);
 	TetraminoType GetType() const;
+	vec2 GetPos() const;
+	void SetPos(const vec2& pos);
+	bool IsDropping() const;
+	void HardDrop(const vec2& ghostPos);
+	void UpdateAnimation(float deltaTime);
+	bool IsAnimating() const;
+	vec2 GetVisualPos() const;
 protected:
-	Tetramino(TetraminoType type, vec2 pos) : m_type(type), m_pos(pos) {}
+	Tetramino(TetraminoType type, const vec2& pos);
 
-	std::array<vec2, 4> m_tetramino{};
-	std::array<std::array<vec2, 4>, 4> m_rotationStates{};
+	std::array<vec2, 4> m_tetramino;
+	std::array<std::array<vec2, 4>, 4> m_rotationStates;
 	int m_rotationState = 0;
 	vec2 m_pos;
 	TetraminoType m_type;
+
+	vec2   m_visualPos;      
+	vec2   m_targetPos;    
+	vec2   m_startPos;     
+	float  m_moveElapsed = 0.f;
+	float  m_moveDuration = 0.f;
+	float  m_animSpeed = 8.0f;
+	float  m_dropSpeed = 20.0f;
+	bool   m_isDropping = false;
 };
 
-class Tetramino_I : public Tetramino {
-public:
-	Tetramino_I();
-};
+#define DEFINE_TETRAMINO(name) class name : public Tetramino { public: name(); };
 
-class Tetramino_J : public Tetramino {
-public:
-	Tetramino_J();
-};
+DEFINE_TETRAMINO(Tetramino_I)
+DEFINE_TETRAMINO(Tetramino_J)
+DEFINE_TETRAMINO(Tetramino_O)
+DEFINE_TETRAMINO(Tetramino_L)
+DEFINE_TETRAMINO(Tetramino_S)
+DEFINE_TETRAMINO(Tetramino_Z)
+DEFINE_TETRAMINO(Tetramino_T)
 
-class Tetramino_O : public Tetramino {
-public:
-	Tetramino_O();
-};
-
-class Tetramino_L : public Tetramino {
-public:
-	Tetramino_L();
-};
-
-class Tetramino_Z : public Tetramino {
-public:
-	Tetramino_Z();
-};
-
-class Tetramino_S : public Tetramino {
-public:
-	Tetramino_S();
-};
-
-class Tetramino_T : public Tetramino {
-public:
-	Tetramino_T();
-};
+#undef DEFINE_TETRAMINO

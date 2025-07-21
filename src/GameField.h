@@ -1,57 +1,46 @@
 #pragma once
 
 #include <array>
-#include <memory>
-#include <random>
-#include <fstream>
 
 #include "Tetramino.h"
-#include "TetraminoFactory.h"
+#include "TetraminoManager.h"
 #include "HighScoreManager.h"
+#include "Constants.h"
+#include "JobSystem.hpp"
 
 class GameField {
 public:
-	static constexpr int WIDTH = 10;
-	static constexpr int HEIGHT = 20;
-
 	GameField();
+	~GameField() = default;
 
 	bool MoveCurrent(Direction dir);
 	bool RotateCurrent();
 	void UpdateGhostPos();
 	void HardDrop();
 	void Update();
-	void Pause();
 	void Reset();
-
-	bool IsPaused() const;
 	bool IsGhostCollide() const;
 	bool IsGameOver() const;
 	int GetScore() const;
-	int GetHighScore() const;
-
-	const std::array<std::array<TetraminoType, HEIGHT>, WIDTH>& GetGrid() const;
-	const Tetramino* GetCurrentTetramino() const;
-	const Tetramino* GetGhostTetramino() const;
-	const Tetramino* GetNextTetramino() const;
-private:
-	std::unique_ptr<Tetramino> CreateRandomTetramino();
+	static int GetHighScore();
+	const std::array<std::array<TetraminoType, Constants::gameFieldHeight>, Constants::gameFieldWidth>& GetGrid() const;
+	const Tetramino& GetCurrentTetramino() const;
+	const Tetramino& GetGhostTetramino() const;
+	const Tetramino& GetNextTetramino() const;
+	Tetramino& GetCurrentTetramino();
+	Tetramino& GetGhostTetramino();
+	void ClearLinesAndSpawn();
 	void SpawnNewTetramino();
 	bool TetraminoFits(const Tetramino& tetramino) const;
 	void LockTetramino();
 	void ClearLines();
+private:
 	void AddScore(int lines);
-
-	std::array<std::array<TetraminoType, HEIGHT>, WIDTH> m_grid{};
-
-	std::unique_ptr<Tetramino> m_currentTetramino;
-	std::unique_ptr<Tetramino> m_nextTetramino;
-	std::unique_ptr<Tetramino> m_ghostTetramino;
-
-	std::mt19937 m_rng;
-	std::uniform_int_distribution<int> m_distribution { 1, 7 };
-
+private:
+	std::array<std::array<TetraminoType, Constants::gameFieldHeight>, Constants::gameFieldWidth> m_grid{};
+	Tetramino m_currentTetramino = TetraminoManager::CreateRandomTetramino();
+	Tetramino m_nextTetramino = TetraminoManager::CreateRandomTetramino();
+	Tetramino m_ghostTetramino = TetraminoManager::CreateTetramino(m_currentTetramino.GetType());
 	int m_score = 0;
 	bool m_gameOver = false;
-	bool m_isPaused = false;
 };

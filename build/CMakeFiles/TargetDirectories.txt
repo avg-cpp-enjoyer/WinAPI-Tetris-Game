@@ -1,0 +1,3 @@
+D:/WinAPI_tetris/build/CMakeFiles/TetrisGame.dir
+D:/WinAPI_tetris/build/CMakeFiles/ALL_BUILD.dir
+D:/WinAPI_tetris/build/CMakeFiles/ZERO_CHECK.dir

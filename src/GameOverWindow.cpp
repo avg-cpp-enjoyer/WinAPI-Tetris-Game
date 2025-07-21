@@ -1,113 +1,176 @@
-#include "GameOverWindow.h"
+﻿#include "GameOverWindow.h"
 
-#include <string>
+GameOverWindow::GameOverWindow(int score, int highScore) : m_score(score), m_highScore(highScore) {}
 
-GameOverWindow::GameOverWindow(int score, int highScore)
-    : m_score(score), m_highScore(highScore) {
-	m_bgBrush = CreateSolidBrush(RGB(30, 30, 30));
-
-	m_scaleFactor = GetScreenDpi() / 96.0f;
-
-	m_hFont = CreateFont(static_cast<int>(24 * m_scaleFactor), 0, 0, 0, FW_NORMAL, false, false, false,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Bahnschrift");
+const wchar_t* GameOverWindow::ClassName() const {
+	return L"GameOverWindowClass";
 }
 
-GameOverWindow::~GameOverWindow() {
-	DeleteObject(m_hFont);
-	DeleteObject(m_bgBrush);
-}
-
-PCWSTR GameOverWindow::ClassName() const { 
-    return L"GameOverWindowClass"; 
-}
-
-LRESULT GameOverWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    switch (uMsg) {
-    case WM_CREATE:
-        CreateControls();
-        break;
-    case WM_DESTROY:
-        DeleteObject(m_hFont);
-        break;
+intptr_t GameOverWindow::HandleMessage(uint32_t msg, uintptr_t wParam, intptr_t lParam) {
+	switch (msg) {
+	case WM_NCCALCSIZE:
+		return 0;
+	case WM_NCHITTEST:
+		return OnNcHitTest(lParam);
+	case WM_CREATE:
+		InitializeD2D();
+		CreateButtons();
+		RenderLayeredWindow();
+		return 0;
 	case WM_PAINT:
-		OnPaint();
-		break;
-    default:
-        return DefWindowProc(m_hWnd, uMsg, wParam, lParam);
-    }
-    return 0;
+		RenderLayeredWindow();
+		ValidateRect(m_window, nullptr);
+		return 0;
+	case WM_DESTROY:
+		CleanupD2D();
+		return 0;
+	}
+
+	return DefWindowProc(m_window, msg, wParam, lParam);
 }
 
-bool GameOverWindow::ShouldRestart() const {
+bool GameOverWindow::ShouldRestart() const noexcept {
 	return m_restart;
 }
 
-void GameOverWindow::CreateControls() {
-	RECT rc;
-	GetClientRect(m_hWnd, &rc);
+intptr_t GameOverWindow::OnNcHitTest(intptr_t lParam) const {
+	POINT pt = { LOWORD(lParam), HIWORD(lParam) };
+	ScreenToClient(m_window, &pt);
 
-	const int buttonWidth   = static_cast<int>(100.0f * m_scaleFactor);
-	const int buttonHeight  = static_cast<int>(40.0f  * m_scaleFactor);
-	const int buttonSpacing = static_cast<int>(20.0f  * m_scaleFactor);
-	const int cornerRadius  = static_cast<int>(10.0f * m_scaleFactor);
+	if (pt.y < Constants::titleBarHeight) {
+		return HTCAPTION;
+	}
 
-	const int totalWidth = buttonWidth * 2 + buttonSpacing;
-	const int startX = (rc.right - totalWidth) / 2;
-	const int yPos = rc.bottom - buttonHeight - 20;
+	return DefWindowProc(m_window, WM_NCHITTEST, 0, lParam);
+}
 
-	COLORREF clrDefault = RGB(50, 50, 50);
-	COLORREF clrHovered = RGB(60, 60, 60);
-	COLORREF clrClicked = RGB(70, 70, 70);
-	COLORREF textColor  = RGB(128, 128, 128);
+void GameOverWindow::InitializeD2D() {
+	D2D1_FACTORY_OPTIONS options = {};
+	HR_LOG(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory1), &options,
+		reinterpret_cast<void**>(m_d2dFactory.GetAddressOf())));
 
-	m_restartButton = std::make_unique<Button>(m_hWnd, L"Restart", startX, yPos, buttonWidth, buttonHeight,
-		cornerRadius, IDC_BUTTON_R, m_hFont, textColor, clrDefault, clrClicked, clrHovered);
+	HR_LOG(CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_wicFactory)));
+	HR_LOG(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), &m_writeFactory));
 
-	m_quitButton = std::make_unique<Button>(m_hWnd, L"Quit", startX + buttonWidth + buttonSpacing, yPos,
-		buttonWidth, buttonHeight, cornerRadius, IDC_BUTTON_Q, m_hFont, textColor, clrDefault, clrClicked, clrHovered);
+	HR_LOG(m_writeFactory->CreateTextFormat(L"Bahnschrift", nullptr, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL, Constants::fontSize, L"", &m_textFormat));
+
+	m_textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+	m_textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+
+	D2D1_RENDER_TARGET_PROPERTIES rtProps = D2D1::RenderTargetProperties(D2D1_RENDER_TARGET_TYPE_SOFTWARE,
+		D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED));
+
+	HR_LOG(m_d2dFactory->CreateDCRenderTarget(&rtProps, &m_d2dRT));
+
+	HR_LOG(m_d2dRT->CreateSolidColorBrush(Constants::bgColor, &m_bgBrush));
+	HR_LOG(m_d2dRT->CreateSolidColorBrush(Constants::borderColor, &m_borderBrush));
+	HR_LOG(m_d2dRT->CreateSolidColorBrush(Constants::uiTextColor, &m_textBrush));
+}
+
+void GameOverWindow::CleanupD2D() {
+	m_d2dRT.Reset();
+	m_d2dFactory.Reset();
+	m_wicFactory.Reset();
+	m_writeFactory.Reset();
+	m_textFormat.Reset();
+	m_bgBrush.Reset();
+	m_borderBrush.Reset();
+	m_textBrush.Reset();
+}
+
+void GameOverWindow::CreateButtons() {
+	m_restartButton = std::make_unique<Button>(m_window, L"Restart", Constants::gameOverRestartRect, Constants::uiElemCornerRad,
+		false, Constants::uiTextColor, Constants::borderColor, Constants::btnClrDefault,
+		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dRT.Get()
+	);
+
+	m_quitButton = std::make_unique<Button>(m_window, L"Quit", Constants::gameOverQuitRect, Constants::uiElemCornerRad,
+		false, Constants::uiTextColor, Constants::borderColor, Constants::btnClrDefault,
+		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dRT.Get()
+	);
 
 	m_restartButton->SetOnClick([this]() {
 		m_restart = true;
-		DestroyWindow(m_hWnd);
+		DestroyWindow(m_window);
 	});
 
-	m_quitButton->SetOnClick([this]() { 
-		PostQuitMessage(0);
-		DestroyWindow(GetParent(m_hWnd));  
-		DestroyWindow(m_hWnd);
+	m_quitButton->SetOnClick([this]() {
+		m_restart = false;
+		DestroyWindow(m_window);
 	});
 }
 
-void GameOverWindow::OnPaint() {
-	PAINTSTRUCT ps;
-	HDC hdc = BeginPaint(m_hWnd, &ps);
-
+void GameOverWindow::RenderLayeredWindow() {
 	RECT rc;
-	GetClientRect(m_hWnd, &rc);
-	FillRect(hdc, &rc, m_bgBrush);
+	GetClientRect(m_window, &rc);
 
-	SetBkMode(hdc, TRANSPARENT);
-	SetTextColor(hdc, RGB(255, 255, 255));
-	SelectObject(hdc, m_hFont);
+	const int width = static_cast<int>(Constants::gameOverWndWidth);
+	const int height = static_cast<int>(Constants::gameOverWndHeight);
 
-	std::wstring text = L"Game Over!\nScore: " + std::to_wstring(m_score)
-		+ L"\nHigh Score: " + std::to_wstring(m_highScore);
+	HDC hdcScreen = GetDC(nullptr);
+	HDC hdcMem = CreateCompatibleDC(hdcScreen);
 
-	RECT textRect = rc;
-	textRect.top = rc.top + static_cast<int>(40.0f * m_scaleFactor);
-	textRect.bottom = rc.bottom - static_cast<int>(80.0f * m_scaleFactor);
-	DrawText(hdc, text.c_str(), -1, &textRect, DT_CENTER | DT_VCENTER | DT_NOCLIP);
+	BITMAPINFO info = {};
+	info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	info.bmiHeader.biWidth = width;
+	info.bmiHeader.biHeight = -height;
+	info.bmiHeader.biPlanes = 1;
+	info.bmiHeader.biBitCount = 32;
+	info.bmiHeader.biCompression = BI_RGB;
 
-	EndPaint(m_hWnd, &ps);
-}
+	void* bits = nullptr;
+	HBITMAP  bitmap = CreateDIBSection(hdcScreen, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
 
-float GameOverWindow::GetScreenDpi() const {
-	UINT dpiX = 0;
-	UINT dpiY = 0;
+	if (!bitmap) {
+		DeleteDC(hdcMem);
+		ReleaseDC(nullptr, hdcScreen);
+		return;
+	}
 
-	HMONITOR hMonitor = MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
-	HRESULT hRes = GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+	HGDIOBJ oldBmp = SelectObject(hdcMem, bitmap);
 
-	return SUCCEEDED(hRes) ? static_cast<float>(dpiX) : 96.0f;
+	HR_LOG(m_d2dRT->BindDC(hdcMem, &rc));
+
+	m_d2dRT->BeginDraw();
+	m_d2dRT->Clear(D2D1::ColorF(0, 0, 0, 0));
+
+	D2D1_ROUNDED_RECT rect = {
+		std::floor(static_cast<float>(rc.left))  + 1.0f,
+		std::floor(static_cast<float>(rc.top))   + 1.0f,
+		std::ceil(static_cast<float>(rc.right))  - 1.0f,
+		std::ceil(static_cast<float>(rc.bottom)) - 1.0f,
+		Constants::windowCornerRad - 0.5f,
+		Constants::windowCornerRad - 0.5f
+	};
+
+	const float strokeWidth = Constants::strokeWidth;
+	const float offset = strokeWidth / 2.0f;
+
+	m_d2dRT->SetTransform(D2D1::Matrix3x2F::Translation(offset, offset));
+	m_d2dRT->FillRoundedRectangle(rect, m_bgBrush.Get());
+	m_d2dRT->DrawRoundedRectangle(rect, m_borderBrush.Get(), strokeWidth);
+	m_d2dRT->SetTransform(D2D1::Matrix3x2F::Identity());
+
+	std::wstring text = L"Game Over!\nScore: " + std::to_wstring(m_score) + L"\nHigh Score: " + std::to_wstring(m_highScore);
+
+	D2D1_RECT_F textRect = D2D1::RectF(0, 0, Constants::gameOverWndWidth, Constants::gameOverWndHeight - 80);
+
+	m_d2dRT->DrawTextW(text.c_str(), static_cast<uint32_t>(text.size()), m_textFormat.Get(), textRect, m_textBrush.Get());
+
+	m_restartButton->Draw();
+	m_quitButton->Draw();
+
+	m_d2dRT->EndDraw();
+
+	POINT source = { 0, 0 };
+	SIZE  size = { width, height };
+	BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+
+	UpdateLayeredWindow(m_window, hdcScreen, nullptr, &size, hdcMem, &source, 0, &blend, ULW_ALPHA);
+
+	SelectObject(hdcMem, oldBmp);
+	DeleteObject(bitmap);
+	DeleteDC(hdcMem);
+	ReleaseDC(nullptr, hdcScreen);
 }

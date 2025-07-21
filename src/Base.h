@@ -1,92 +1,94 @@
 #pragma once
 
 #include <Windows.h>
+#include <cstdint>
 
 template <typename Derived_T>
 class Base {
 public:
-	Base() : m_hWnd(nullptr) {}
-	virtual ~Base() {}
+	Base() : m_window(nullptr) {}
+	virtual ~Base() = default;
 
 	Base(const Base&) = delete;
 	Base& operator=(const Base&) = delete;
 
 	bool Create(
-		PCWSTR lpWindowName,
-		DWORD dwStyle,
-		DWORD dwExStyle = 0,
+		const wchar_t* windowName,
+		uint32_t style,
+		uint32_t exStyle = 0,
 		int x = CW_USEDEFAULT,
 		int y = CW_USEDEFAULT,
 		int width = CW_USEDEFAULT,
 		int height = CW_USEDEFAULT,
-		HBRUSH bgColor = HBRUSH(),
-		HWND hWndParent = nullptr,
-		HMENU hMenu = nullptr
+		HBRUSH bgBrush = nullptr,
+		HWND parentWnd = nullptr,
+		HMENU menu = nullptr
 	);
 
-	static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static intptr_t _stdcall WndProc(HWND window, uint32_t msg, uintptr_t wParam, intptr_t lParam);
 	HWND Window() const noexcept;
-
 protected:
-	virtual PCWSTR ClassName() const = 0;
-	virtual LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) = 0;
-
-	HWND m_hWnd;
+	virtual const wchar_t* ClassName() const = 0;
+	virtual intptr_t HandleMessage(uint32_t msg, uintptr_t wParam, intptr_t lParam) = 0;
+protected:
+	HWND m_window;
 };
 
 template <typename Derived_T>
 inline bool Base<Derived_T>::Create(
-	PCWSTR lpWindowName,
-	DWORD dwStyle,
-	DWORD dwExStyle,
+	const wchar_t* windowName,
+	uint32_t style,
+	uint32_t exStyle,
 	int x,
 	int y,
 	int width,
 	int height,
-	HBRUSH bgColor,
-	HWND hWndParent,
-	HMENU hMenu) {
+	HBRUSH bgBrush,
+	HWND parentWnd,
+	HMENU menu) {
+
 	WNDCLASS wclass = { 0 };
 
+	wclass.style = CS_HREDRAW | CS_VREDRAW;
 	wclass.lpfnWndProc = Base<Derived_T>::WndProc;
 	wclass.hInstance = GetModuleHandle(nullptr);
 	wclass.lpszClassName = ClassName();
-	wclass.hbrBackground = bgColor;
+	wclass.hbrBackground = bgBrush;
 
 	if (!RegisterClass(&wclass) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
 		return false;
 	}
 
-	m_hWnd = CreateWindowEx(
-		dwExStyle, ClassName(), lpWindowName, dwStyle, x, y,
-		width, height, hWndParent, hMenu, GetModuleHandle(nullptr), this
+	m_window = CreateWindowEx(
+		exStyle, ClassName(), windowName, style, x, y,
+		width, height, parentWnd, menu, GetModuleHandle(nullptr), this
 	);
 
-	return m_hWnd != nullptr;
+	return m_window != nullptr;
 }
 
 
 template <typename Derived_T>
-inline LRESULT Base<Derived_T>::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	Derived_T* window = nullptr;
+inline intptr_t Base<Derived_T>::WndProc(HWND window, uint32_t msg, uintptr_t wParam, intptr_t lParam) {
+	Derived_T* self = nullptr;
 
-	if (uMsg == WM_NCCREATE) {
-		CREATESTRUCT* create = reinterpret_cast<CREATESTRUCT*>(lParam);
-		window = static_cast<Derived_T*>(create->lpCreateParams);
-		SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(window));
-		window->m_hWnd = hWnd;
+	if (msg == WM_NCCREATE) {
+		auto* create = reinterpret_cast<CREATESTRUCT*>(lParam);
+		self = static_cast<Derived_T*>(create->lpCreateParams);
+		SetWindowLongPtr(window, GWLP_USERDATA, reinterpret_cast<intptr_t>(self));
+		self->m_window = window;
 	} else {
-		window = reinterpret_cast<Derived_T*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+		self = reinterpret_cast<Derived_T*>(GetWindowLongPtr(window, GWLP_USERDATA));
 	}
 
-	if (window) {
-		return window->HandleMessage(uMsg, wParam, lParam);
+	if (self) {
+		return self->HandleMessage(msg, wParam, lParam);
 	}
 
-	return DefWindowProc(hWnd, uMsg, wParam, lParam);
+	return DefWindowProc(window, msg, wParam, lParam);
 }
 
 template <typename Derived_T>
 inline HWND Base<Derived_T>::Window() const noexcept {
-	return m_hWnd;
+	return m_window;
 }

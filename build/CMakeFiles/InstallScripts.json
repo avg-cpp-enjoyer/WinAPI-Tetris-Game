@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/WinAPI_tetris/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

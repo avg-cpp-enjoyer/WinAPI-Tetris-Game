@@ -1,45 +1,42 @@
 ﻿#pragma once
 
-#include "resource.h"
 #include "TetraminoTypes.h"
+#include "resource.h"
+#include "Log.hpp"
 
 #include <Windows.h>
+#include <d2d1_1.h>
+#include <wincodec.h>
+#include <wrl/client.h>
+#include <Shlwapi.h>
 #include <unordered_map>
 #include <stdexcept>
-#include <memory>
-#include <gdiplus.h>
-#include <Shlwapi.h>
 
 #pragma comment(lib, "Shlwapi.lib")
-
-class ResourceException : public std::runtime_error {
-public:
-	using std::runtime_error::runtime_error;
-};
 
 class ResourceManager {
 public:
 	ResourceManager(const ResourceManager&) = delete;
+	ResourceManager& operator=(const ResourceManager&) = delete;
 
-	static Gdiplus::Bitmap* GetTetraminoBitmap(TetraminoType type);
+	static void Initialize(ID2D1DeviceContext* context, IWICImagingFactory* wic);
+	static ID2D1Bitmap* GetTetraminoBitmap(TetraminoType type);
 	static void ClearResources();
+	static void Shutdown();
 private:
-	struct BitmapDeleter {
-		void operator()(Gdiplus::Bitmap* p) const {
-			delete p;
-		}
-	};
-
-	ResourceManager();
-	~ResourceManager() {}
+	ResourceManager() = default;
+	~ResourceManager() = default;
 
 	static ResourceManager& GetInstance();
-	Gdiplus::Bitmap* GetTetraminoBitmapImpl(TetraminoType type) const;
-	void ClearResourcesImpl();
 	void LoadResources();
 	void LoadTetraminoBitmap(TetraminoType type, const wchar_t* resourceName);
+private:
+	void ShutdownImpl();
+	ID2D1Bitmap* GetTetraminoBitmapImpl(TetraminoType type);
+	void InitializeImpl(ID2D1DeviceContext* context, IWICImagingFactory* wic);
+private:
+	ID2D1DeviceContext* m_context = nullptr;
+	IWICImagingFactory* m_wicFactory = nullptr;
 
-	using BitmapPtr = std::unique_ptr<Gdiplus::Bitmap, BitmapDeleter>;
-	std::unordered_map<TetraminoType, BitmapPtr> m_bitmaps;
+	std::unordered_map<TetraminoType, Microsoft::WRL::ComPtr<ID2D1Bitmap>> m_bitmaps;
 };
-

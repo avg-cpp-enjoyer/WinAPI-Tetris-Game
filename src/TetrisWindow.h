@@ -1,75 +1,121 @@
-#pragma once
+﻿#pragma once
 
+#include "Base.h"
 #include "GameField.h"
 #include "ResourceManager.h"
-#include "GameOverWindow.h"
-#include "Base.h"
 #include "Button.h"
+#include "TitleButton.h"
+#include "Constants.h"
+#include "GameOverWindow.h"
+#include "Renderer.hpp"
+#include "Log.hpp"
+#include "JobSystem.hpp"
 
-#include <unordered_map>
-#include <gdiplus.h>
-#include <Shlwapi.h> 
-#include <ShellScalingAPI.h>
+#include <Windows.h>
+#include <d3d11.h>
+#include <dxgi1_2.h>
+#include <d2d1_2.h>
+#include <dcomp.h>
+#include <dwrite.h>
+#include <wincodec.h>
+#include <wrl/client.h>
+#include <comdef.h>
+#include <memory>
+#include <chrono>
+#include <mutex>
+#include <deque>
+#include <shared_mutex>
 
-#pragma comment(lib, "Shlwapi.lib")
-#pragma comment(lib, "gdiplus.lib")
-#pragma comment(lib, "Shcore.lib")
+#pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "Dcomp.lib")
+#pragma comment(lib, "dwrite.lib")
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "Windowscodecs.lib")
 
-#define IDC_BUTTON_1 1001
-#define IDC_BUTTON_2 1002
+enum class Command {
+	MoveLeft, MoveRight, MoveDown, Rotate, HardDrop, Pause
+};
 
-class TetrisWindow : public Base<TetrisWindow> {
+class TetrisWindow final : public Base<TetrisWindow> {
 public:
-	int windowWidth;
-	int windowHeight;
+	TetrisWindow() = default;
+	~TetrisWindow() override {}
 
-	TetrisWindow();
-	~TetrisWindow();
-
-	PCWSTR ClassName() const override;
-	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+	const wchar_t* ClassName() const override;
+	intptr_t HandleMessage(uint32_t msg, uintptr_t wParam, intptr_t lParam) override;
+	void Exec(int cmdShow);
 private:
-	void OnPaint();
-	void OnKeyDown(WPARAM key);
-	void UpdateGame();
-	void UpdateWnd() const;
-	void DrawRoundedText(HDC hdc, RECT rect, const std::wstring& text);
-	void DrawNextTetraminoWnd(HDC hdc, RECT rect);
-	void AddButtons();
-	void CreateGameOverWindow();
+	void InitD3D();
+	void InitD2D();
+	void InitDComp();
+	void InitText();
+	void InitBrushes();
+	void Cleanup();
+	void RenderLoop();
+	void LogicLoop();
+	bool GravityStep();
+	void ExecuteCommand(Command cmd);
+	void CreateButtons();
+	void CreateTitleButtons();
+	intptr_t OnNcHitTest(intptr_t lParam) const;
+	void OnKeyDown(uintptr_t key);
+	bool CreateGameOverWindow();
+	void RestartCallback();
+	void RenderFrame();
 	void PauseGame();
-	void CreateBackBuffer(int width, int height);
-	void CleanupBackBuffer();
-	float GetScreenDpi() const;
+	void OnCreate();
+	void OnDestroy();
+	void OnGameOver();
+private:
+	GameField                  m_gameField;
+	std::unique_ptr<Renderer>  m_renderer;
+	static constexpr uint32_t  WM_APP_GAMEOVER = WM_APP + 1;
 
-	int m_lastWidth = 0;
-	int m_lastHeight = 0;
-	float m_scaleFactor = 1.0f;
+	std::thread                m_renderThread;
+	std::thread                m_logicThread;
+	mutable std::shared_mutex  m_gameFieldMutex;
+	std::mutex                 m_cmdMutex;
+	std::mutex                 m_restartMutex;
+	std::condition_variable    m_cmdCV;
+	std::condition_variable    m_restartCV;
+	std::deque<Command>        m_commands;
+	std::atomic<bool>          m_renderRunning{ false };
+	std::atomic<bool>          m_logicRunning{ false };
+	std::atomic<bool>          m_isPaused{ false };
+	std::atomic<bool>          m_waitingForRestart{ false };
+	std::atomic<bool>          m_needsRedraw{ false };
+	std::atomic<bool>          m_hardDropDone{ false };
+	float m_logicAccumulator = 0.0f;
 
-	HDC m_hMemDC = nullptr;
-	HBITMAP m_hMemBitmap = nullptr;
-	GameField m_gameField;
-	HFONT m_hFont;
-	HBRUSH m_gridBrush;
-	HBRUSH m_bgBrush;
-	HBRUSH m_uiElemBgBrush;
-	HPEN m_borderPen;
-	RECT m_rcGameField;
-	RECT m_rcScore;
-	RECT m_rcHighScore;
-	RECT m_rcNextTetramino;
+	Microsoft::WRL::ComPtr<ID3D11Device>          m_d3dDevice;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext>   m_d3dContext;
+	Microsoft::WRL::ComPtr<IDXGISwapChain1>       m_swapChain;
+	Microsoft::WRL::ComPtr<IDXGIDevice>           m_dxgiDevice;
+
+	Microsoft::WRL::ComPtr<ID2D1Factory1>         m_d2dFactory;
+	Microsoft::WRL::ComPtr<ID2D1Device>           m_d2dDevice;
+	Microsoft::WRL::ComPtr<ID2D1DeviceContext1>   m_d2dContext;
+	Microsoft::WRL::ComPtr<ID2D1Bitmap1>          m_d2dTarget;
+
+	Microsoft::WRL::ComPtr<IDCompositionDevice>   m_dcompDevice;
+	Microsoft::WRL::ComPtr<IDCompositionTarget>   m_dcompTarget;
+	Microsoft::WRL::ComPtr<IDCompositionVisual>   m_dcompVisual;
+
+	Microsoft::WRL::ComPtr<IWICImagingFactory>    m_wicFactory;
+	Microsoft::WRL::ComPtr<IDWriteFactory>        m_writeFactory;
+	Microsoft::WRL::ComPtr<IDWriteTextFormat>     m_textFormat;
+
+	Microsoft::WRL::ComPtr<ID2D1SolidColorBrush>  m_bgBrush;
+	Microsoft::WRL::ComPtr<ID2D1SolidColorBrush>  m_uiBrush;
+	Microsoft::WRL::ComPtr<ID2D1SolidColorBrush>  m_borderBrush;
+	Microsoft::WRL::ComPtr<ID2D1SolidColorBrush>  m_textBrush;
+	Microsoft::WRL::ComPtr<ID2D1SolidColorBrush>  m_gridBrush;
 
 	std::unique_ptr<Button> m_pauseButton;
 	std::unique_ptr<Button> m_quitButton;
+	std::unique_ptr<Button> m_minimizeButton;
+	std::unique_ptr<Button> m_closeButton;
 
-	int m_blockSize;
-	int m_gridOffsetX;
-	int m_gridOffsetY;
-	int m_uiElemWidth;
-	int m_uiElemHeight;
-	int m_uiElemCornerRad;
-	int m_uiElemSpacing;
-	int m_nextWndHeight;
-
-	static constexpr COLORREF s_textColor = RGB(128, 128, 128);
+	std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double, std::nano>> m_nextTick;
 };
