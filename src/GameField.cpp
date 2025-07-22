@@ -147,18 +147,15 @@ void GameField::LockTetramino() {
 		}
 	}
 
-	using clk = std::chrono::steady_clock;
-	auto t0 = clk::now();
 	ClearLines();
-	auto t1 = clk::now();
-	auto dt = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
-	OutputDebugStringA((std::to_string(dt) + " µs for Clear\n").c_str());
-	SpawnNewTetramino();
 
-	if (!TetraminoFits(m_currentTetramino)) {
+	if (!TetraminoFits(m_nextTetramino)) {
 		m_gameOver = true;
 		HighScoreManager::CheckAndUpdate(m_score);
+		return;
 	}
+
+	SpawnNewTetramino();
 }
 
 void GameField::UpdateGhostPos() {

@@ -9,7 +9,6 @@
 #include "GameOverWindow.h"
 #include "Renderer.hpp"
 #include "Log.hpp"
-#include "JobSystem.hpp"
 
 #include <Windows.h>
 #include <d3d11.h>
@@ -34,7 +33,7 @@
 #pragma comment(lib, "Windowscodecs.lib")
 
 enum class Command {
-	MoveLeft, MoveRight, MoveDown, Rotate, HardDrop, Pause
+	MoveLeft, MoveRight, MoveDown, Rotate, HardDrop, CommitDrop, Pause
 };
 
 class TetrisWindow final : public Base<TetrisWindow> {
@@ -85,7 +84,7 @@ private:
 	std::atomic<bool>          m_isPaused{ false };
 	std::atomic<bool>          m_waitingForRestart{ false };
 	std::atomic<bool>          m_needsRedraw{ false };
-	std::atomic<bool>          m_hardDropDone{ false };
+	std::atomic<bool>          m_pendingLock{ false };
 	float m_logicAccumulator = 0.0f;
 
 	Microsoft::WRL::ComPtr<ID3D11Device>          m_d3dDevice;

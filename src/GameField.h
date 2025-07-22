@@ -6,7 +6,6 @@
 #include "TetraminoManager.h"
 #include "HighScoreManager.h"
 #include "Constants.h"
-#include "JobSystem.hpp"
 
 class GameField {
 public:

@@ -33,21 +33,21 @@ void ResourceManager::LoadResources() {
 }
 
 void ResourceManager::LoadTetraminoBitmap(TetraminoType type, const wchar_t* resourceName) {
-	HRSRC hRes = FindResourceW(nullptr, resourceName, L"PNG");   
-	if (!hRes) {
+	HRSRC resource = FindResourceW(nullptr, resourceName, L"PNG");   
+	if (!resource) {
 		throw std::runtime_error("Resource not found for TetraminoType");
 	}
 
-	HGLOBAL hData = LoadResource(nullptr, hRes);
-	if (!hData) {
+	HGLOBAL data = LoadResource(nullptr, resource);
+	if (!data) {
 		throw std::runtime_error("Failed to LoadResource");
 	}
 
-	void* pData = LockResource(hData);
-	DWORD size = SizeofResource(nullptr, hRes);
+	void* dataPtr = LockResource(data);
+	DWORD size = SizeofResource(nullptr, resource);
 
 	Microsoft::WRL::ComPtr<IStream> stream;
-	stream.Attach(SHCreateMemStream(reinterpret_cast<const BYTE*>(pData), size));
+	stream.Attach(SHCreateMemStream(reinterpret_cast<const BYTE*>(dataPtr), size));
 	if (!stream) {
 		throw std::runtime_error("Failed to create memory stream");
 	}

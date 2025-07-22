@@ -3,12 +3,12 @@
 namespace Constants {
 	void Init() {
 		scaleFactor               = static_cast<float>(GetDpiForSystem()) / 96.0f;
-		buttonTextOffsetY         = 3.0f * scaleFactor;
+		buttonTextOffsetY         = 3.0f   * scaleFactor;
 						     
-		gridCornerRadius          = 5.0f * scaleFactor;
+		gridCornerRadius          = 5.0f   * scaleFactor;
 
-		fontSize                  = 20.0f * scaleFactor;
-		uiElemCornerRad           = 11.0f * scaleFactor;
+		fontSize                  = 20.0f  * scaleFactor;
+		uiElemCornerRad           = 11.0f  * scaleFactor;
 
 		titleBarHeight            = 31.0f  * scaleFactor;
 		titleBarBtnWidth          = 40.0f  * scaleFactor;
@@ -19,7 +19,7 @@ namespace Constants {
 
 		windowWidth               = static_cast<int>(521.0f * scaleFactor);
 		windowHeight              = static_cast<int>(668.0f * scaleFactor);
-		windowCornerRad           = 14.0f * scaleFactor;
+		windowCornerRad           = 14.0f  * scaleFactor;
 
 		blockSize                 = 30.0f  * scaleFactor;
 		gridOffsetX               = 16.0f  * scaleFactor;
@@ -115,52 +115,35 @@ namespace Constants {
 			static_cast<float>(highScore.bottom)
 		), uiElemCornerRad, uiElemCornerRad);
 
-		pauseRect = D2D1::RectF(
-			mainWndBtnPosX,
-			mainWndPauseBtnPosY,
-			mainWndBtnPosX + Constants::uiElemWidth,
-			mainWndPauseBtnPosY + Constants::uiElemHeight);
+		pauseRect = D2D1::RectF(mainWndBtnPosX, mainWndPauseBtnPosY, mainWndBtnPosX + uiElemWidth, mainWndPauseBtnPosY + uiElemHeight);
+		quitRect  = D2D1::RectF(mainWndBtnPosX, mainWndQuitBtnPosY, mainWndBtnPosX + uiElemWidth, mainWndQuitBtnPosY + uiElemHeight);
 
-		quitRect = D2D1::RectF(
-			Constants::mainWndBtnPosX,
-			Constants::mainWndQuitBtnPosY,
-			Constants::mainWndBtnPosX + Constants::uiElemWidth,
-			Constants::mainWndQuitBtnPosY + Constants::uiElemHeight);
+		closeRect = D2D1::RectF(titleBarQuitBtnPosX, titleBarBtnPosY,
+			titleBarQuitBtnPosX + titleBarBtnWidth, 
+			titleBarBtnPosY + titleBarBtnHeight);
 
-		closeRect = D2D1::RectF(
-			Constants::titleBarQuitBtnPosX,
-			Constants::titleBarBtnPosY,
-			Constants::titleBarQuitBtnPosX + Constants::titleBarBtnWidth,
-			Constants::titleBarBtnPosY + Constants::titleBarBtnHeight);
-
-		minimizeRect = D2D1::RectF(
-			Constants::titleBarMinimizeBtnPosX,
-			Constants::titleBarBtnPosY,
-			Constants::titleBarMinimizeBtnPosX + Constants::titleBarBtnWidth,
-			Constants::titleBarBtnPosY + Constants::titleBarBtnHeight);
-
-		gameOverRestartRect = D2D1::RectF(
-			Constants::gameOverWndRestartButtonPosX,
-			Constants::gameOverWndBtnPosY,
-			Constants::gameOverWndRestartButtonPosX + Constants::gameOverWndBtnWidth,
-			Constants::gameOverWndBtnPosY + Constants::gameOverWndBtnHeight
-		);
-
-		gameOverQuitRect = D2D1::RectF(
-			Constants::gameOverWndQuitButtonPosX,
-			Constants::gameOverWndBtnPosY,
-			Constants::gameOverWndQuitButtonPosX + Constants::gameOverWndBtnWidth,
-			Constants::gameOverWndBtnPosY + Constants::gameOverWndBtnHeight
-		);
+		minimizeRect = D2D1::RectF(titleBarMinimizeBtnPosX, titleBarBtnPosY, 
+			titleBarMinimizeBtnPosX + titleBarBtnWidth,
+			titleBarBtnPosY + titleBarBtnHeight);
 
 		gameOverWndWidth              = 350.0f * scaleFactor;
 		gameOverWndHeight             = 250.0f * scaleFactor;
 		gameOverWndBtnWidth           = 100.0f * scaleFactor;
-		gameOverWndBtnHeight          = 40.0f * scaleFactor;
-		gameOverWndBtnSpacing         = 20.0f * scaleFactor;
-		gameOverWndBtnRadius          = 10.0f * scaleFactor;
-		gameOverWndRestartButtonPosX  = 60.0f * scaleFactor;
+		gameOverWndBtnHeight          = 40.0f  * scaleFactor;
+		gameOverWndBtnSpacing         = 20.0f  * scaleFactor;
+		gameOverWndBtnRadius          = 10.0f  * scaleFactor;
+		gameOverWndRestartButtonPosX  = 60.0f  * scaleFactor;
 		gameOverWndQuitButtonPosX     = gameOverWndRestartButtonPosX + gameOverWndBtnWidth + gameOverWndBtnSpacing;
 		gameOverWndBtnPosY            = 205 - gameOverWndBtnHeight;
+
+		gameOverRestartRect = D2D1::RectF(gameOverWndRestartButtonPosX, gameOverWndBtnPosY,
+			gameOverWndRestartButtonPosX + gameOverWndBtnWidth,
+			gameOverWndBtnPosY + gameOverWndBtnHeight
+		);
+
+		gameOverQuitRect = D2D1::RectF(gameOverWndQuitButtonPosX, gameOverWndBtnPosY,
+			gameOverWndQuitButtonPosX + gameOverWndBtnWidth,
+			gameOverWndBtnPosY + gameOverWndBtnHeight
+		);
 	}
 }

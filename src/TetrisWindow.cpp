@@ -162,11 +162,14 @@ void TetrisWindow::RenderLoop() {
 		{
 			std::shared_lock lk(m_gameFieldMutex);
 			m_renderer->UpdateAnimations(static_cast<float>(delta.count()), m_gameField);
-			auto& cur = m_gameField.GetCurrentTetramino();
-			if (!cur.IsAnimating() && cur.IsDropping()) {
-				m_hardDropDone.store(true, std::memory_order_relaxed);
-				m_cmdCV.notify_one();
-			}
+		}
+		Tetramino& current = m_gameField.GetCurrentTetramino();
+		if (m_pendingLock.load(std::memory_order_relaxed) && !current.IsAnimating()) {
+			std::unique_lock lk(m_gameFieldMutex);
+			m_gameField.LockTetramino();
+			m_nextTick = std::chrono::steady_clock::now() + std::chrono::duration<double>(0.5);
+			m_cmdCV.notify_one();
+			m_pendingLock.store(false, std::memory_order_relaxed);
 		}
 		RenderFrame();
 	}
@@ -179,9 +182,7 @@ void TetrisWindow::LogicLoop() {
 
 	std::unique_lock<std::mutex> lock(m_cmdMutex);
 	while (m_logicRunning.load(std::memory_order_relaxed)) {
-		m_cmdCV.wait_until(lock, m_nextTick, [&] {
-			return !m_logicRunning.load() || !m_commands.empty() || m_hardDropDone.load();
-		});
+		m_cmdCV.wait_until(lock, m_nextTick, [&] { return !m_logicRunning.load() || !m_commands.empty(); });
 
 		if (!m_logicRunning.load()) {
 			break;
@@ -204,16 +205,6 @@ void TetrisWindow::LogicLoop() {
 			PostMessage(m_window, WM_APP_GAMEOVER, 0, 0);
 			m_isPaused.store(true);
 			m_nextTick = std::chrono::steady_clock::now() + tickInterval;
-			continue;
-		}
-
-		if (m_hardDropDone.exchange(false)) {
-			{
-				std::shared_lock dropLock(m_gameFieldMutex);
-				m_gameField.LockTetramino();
-			}
-			m_nextTick = std::chrono::steady_clock::now();
-			m_needsRedraw.store(true, std::memory_order_relaxed);
 			continue;
 		}
 
@@ -258,7 +249,13 @@ void TetrisWindow::ExecuteCommand(Command cmd) {
 		break;
 	case Command::HardDrop:
 		m_gameField.HardDrop();
+		m_pendingLock.store(true, std::memory_order_relaxed);
 		break;
+	case Command::CommitDrop: {
+		std::unique_lock lk(m_gameFieldMutex);
+		m_gameField.LockTetramino();
+		m_nextTick = std::chrono::steady_clock::now() + std::chrono::duration<double>(0.5);
+	}
 	case Command::Pause:     
 		PauseGame(); 
 		break;
@@ -384,6 +381,7 @@ void TetrisWindow::RenderFrame() {
 
 	m_d2dContext->EndDraw();
 	m_swapChain->Present(1, 0);
+	HR_LOG(m_dcompDevice->Commit());
 }
 
 void TetrisWindow::PauseGame() {

@@ -55,8 +55,8 @@ void GameOverWindow::InitializeD2D() {
 	HR_LOG(m_writeFactory->CreateTextFormat(L"Bahnschrift", nullptr, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL, Constants::fontSize, L"", &m_textFormat));
 
-	m_textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-	m_textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+	HR_LOG(m_textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
+	HR_LOG(m_textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
 
 	D2D1_RENDER_TARGET_PROPERTIES rtProps = D2D1::RenderTargetProperties(D2D1_RENDER_TARGET_TYPE_SOFTWARE,
 		D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED));
@@ -111,16 +111,16 @@ void GameOverWindow::RenderLayeredWindow() {
 	HDC hdcScreen = GetDC(nullptr);
 	HDC hdcMem = CreateCompatibleDC(hdcScreen);
 
-	BITMAPINFO info = {};
-	info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-	info.bmiHeader.biWidth = width;
-	info.bmiHeader.biHeight = -height;
-	info.bmiHeader.biPlanes = 1;
-	info.bmiHeader.biBitCount = 32;
-	info.bmiHeader.biCompression = BI_RGB;
+	BITMAPINFO bi = {};
+	bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bi.bmiHeader.biWidth = width;
+	bi.bmiHeader.biHeight = -height;
+	bi.bmiHeader.biPlanes = 1;
+	bi.bmiHeader.biBitCount = 32;
+	bi.bmiHeader.biCompression = BI_RGB;
 
 	void* bits = nullptr;
-	HBITMAP  bitmap = CreateDIBSection(hdcScreen, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
+	HBITMAP  bitmap = CreateDIBSection(hdcScreen, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
 
 	if (!bitmap) {
 		DeleteDC(hdcMem);
@@ -144,8 +144,8 @@ void GameOverWindow::RenderLayeredWindow() {
 		Constants::windowCornerRad - 0.5f
 	};
 
-	const float strokeWidth = Constants::strokeWidth;
-	const float offset = strokeWidth / 2.0f;
+	static const float strokeWidth = Constants::strokeWidth;
+	static const float offset = strokeWidth / 2.0f;
 
 	m_d2dRT->SetTransform(D2D1::Matrix3x2F::Translation(offset, offset));
 	m_d2dRT->FillRoundedRectangle(rect, m_bgBrush.Get());
