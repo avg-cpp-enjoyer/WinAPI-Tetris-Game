@@ -7,6 +7,8 @@
 #include "HighScoreManager.h"
 #include "Constants.h"
 
+using namespace UI::MainWindow::GameField;
+
 class GameField {
 public:
 	GameField();
@@ -22,7 +24,7 @@ public:
 	bool IsGameOver() const;
 	int GetScore() const;
 	static int GetHighScore();
-	const std::array<std::array<TetraminoType, Constants::gameFieldHeight>, Constants::gameFieldWidth>& GetGrid() const;
+	const std::array<std::array<TetraminoType, gfHeight>, gfWidth>& GetGrid() const;
 	const Tetramino& GetCurrentTetramino() const;
 	const Tetramino& GetGhostTetramino() const;
 	const Tetramino& GetNextTetramino() const;
@@ -36,7 +38,7 @@ public:
 private:
 	void AddScore(int lines);
 private:
-	std::array<std::array<TetraminoType, Constants::gameFieldHeight>, Constants::gameFieldWidth> m_grid{};
+	std::array<std::array<TetraminoType, gfHeight>, gfWidth> m_grid{};
 	Tetramino m_currentTetramino = TetraminoManager::CreateRandomTetramino();
 	Tetramino m_nextTetramino = TetraminoManager::CreateRandomTetramino();
 	Tetramino m_ghostTetramino = TetraminoManager::CreateTetramino(m_currentTetramino.GetType());

@@ -1,97 +1,147 @@
 #include "Constants.h"
 
-namespace Constants {
-	void Init() {
-		scaleFactor       = static_cast<float>(GetDpiForSystem()) / 96.0f;
-		buttonTextOffsetY = 3.0f * scaleFactor;
+void UI::Init() {
+	using General::scaleFactor;
 
-		fontSize          = static_cast<int>(24.0f * scaleFactor);
-		uiElemCornerRad   = static_cast<int>(10.0f * scaleFactor);
+	General::scaleFactor = static_cast<float>(GetDpiForSystem()) / 96.0f;
+	General::fontSize = 20.0f * scaleFactor;
+	General::uiCornerRad = 11.0f * scaleFactor;
 
-		titleBarHeight            = static_cast<int>(31.0f * scaleFactor);
-		titleBarBtnWidth          = static_cast<int>(30.0f * scaleFactor);
-		titleBarBtnHeight         = static_cast<int>(30.0f * scaleFactor);
-		titleBarMinimizeBtnPosX   = static_cast<int>(465.0f * scaleFactor);
-		titleBarQuitBtnPosX       = static_cast<int>(495.0f * scaleFactor);
-		titleBarBtnPosY           = static_cast<int>(1.0f * scaleFactor);
+	MainWindow::GameField::cornerRadius = 5.0f * scaleFactor;
+	MainWindow::GameField::blockSize = 30.0f *  scaleFactor;
+	MainWindow::GameField::offsetX = 16.0f *    scaleFactor;
+	MainWindow::GameField::offsetY = 50.0f *    scaleFactor;
 
-		windowWidth               = static_cast<int>(532.0f * scaleFactor);
-		windowHeight              = static_cast<int>(670.0f * scaleFactor);
-		windowCornerRad           = static_cast<int>(16.0f * scaleFactor);
+	MainWindow::TitleBar::tbHeight = 30.0f * scaleFactor;
+	MainWindow::TitleBar::btnWidth = 40.0f * scaleFactor;
+	MainWindow::TitleBar::btnHeight = 31.0f * scaleFactor;
+	MainWindow::TitleBar::minimizeBtnPosX = (518.0f - MainWindow::TitleBar::btnWidth * 2) * scaleFactor;
+	MainWindow::TitleBar::quitBtnPosX = (518.0f - MainWindow::TitleBar::btnWidth) * scaleFactor;
+	MainWindow::TitleBar::btnPosY = 1.0f * scaleFactor;
 
-		blockSize           = static_cast<int>(30.0f * scaleFactor);
-		gridOffsetX         = static_cast<int>(20.0f * scaleFactor);
-		gridOffsetY         = static_cast<int>(50.0f * scaleFactor);
-		uiElemWidth         = static_cast<int>(168.0f * scaleFactor);
-		uiElemHeight        = static_cast<int>(44.0f * scaleFactor);
-		uiElemSpacing       = static_cast<int>(15.0f * scaleFactor);
-		nextWndHeight       = static_cast<int>(168.0f * scaleFactor);
-		nextWndPadding      = static_cast<int>(10.0f * scaleFactor);
-		nextWndTopPadding   = static_cast<int>(50.0f * scaleFactor);
+	MainWindow::Preview::prHeight = 168.0f * General::scaleFactor;
+	MainWindow::Preview::padding = 10.0f * General::scaleFactor;
+	MainWindow::Preview::topPadding = 50.0f * General::scaleFactor;
 
-		iTetraminoOffX = static_cast<int>(-77.0f * scaleFactor);
-		jTetraminoOffX = static_cast<int>(-47.0f * scaleFactor);
-		lTetraminoOffX = static_cast<int>(-77.0f * scaleFactor);
-		oTetraminoOffX = static_cast<int>(-46.0f * scaleFactor);
-		sTetraminoOffX = static_cast<int>(-62.0f * scaleFactor);
-		zTetraminoOffX = static_cast<int>(-62.0f * scaleFactor);
-		tTetraminoOffX = static_cast<int>(-62.0f * scaleFactor);
+	MainWindow::Preview::offsets = {
+		{ TetraminoType::TETRAMINO_I, D2D1::Point2F(-77.0f * scaleFactor, 40.0f * scaleFactor) },
+		{ TetraminoType::TETRAMINO_J, D2D1::Point2F(-77.0f * scaleFactor, 9.0f * scaleFactor)  },
+		{ TetraminoType::TETRAMINO_L, D2D1::Point2F(-77.0f * scaleFactor, 9.0f * scaleFactor)  },
+		{ TetraminoType::TETRAMINO_O, D2D1::Point2F(-77.0f * scaleFactor, 25.0f * scaleFactor) },
+		{ TetraminoType::TETRAMINO_S, D2D1::Point2F(-62.0f * scaleFactor, 25.0f * scaleFactor) },
+		{ TetraminoType::TETRAMINO_Z, D2D1::Point2F(-62.0f * scaleFactor, 25.0f * scaleFactor) },
+		{ TetraminoType::TETRAMINO_T, D2D1::Point2F(-62.0f * scaleFactor, 25.0f * scaleFactor) },
+	};
 
-		iTetraminoOffY = static_cast<int>(40.0f * scaleFactor);
-		jTetraminoOffY = static_cast<int>(9.0f * scaleFactor);
-		lTetraminoOffY = static_cast<int>(9.0f * scaleFactor);
-		oTetraminoOffY = static_cast<int>(25.0f * scaleFactor);
-		sTetraminoOffY = static_cast<int>(25.0f * scaleFactor);
-		zTetraminoOffY = static_cast<int>(25.0f * scaleFactor);
-		tTetraminoOffY = static_cast<int>(25.0f * scaleFactor);
+	MainWindow::mwWidth =  static_cast<int>(520.0f * General::scaleFactor);
+	MainWindow::mwHeight = static_cast<int>(670.0f * General::scaleFactor);
+	MainWindow::cornerRadius = 16.0f * General::scaleFactor;
+	MainWindow::uiElemWidth = 168.0f * General::scaleFactor;
+	MainWindow::uiElemHeight = 44.0f * General::scaleFactor;
+	MainWindow::uiElemSpacing = 16.0f * General::scaleFactor;
 
-		mainWndBtnPosX       = gridOffsetX * 2 + gameFieldWidth * blockSize;
-		mainWndPauseBtnPosY  = gridOffsetY + gameFieldHeight * blockSize - uiElemHeight * 2 - uiElemSpacing;
-		mainWndQuitBtnPosY   = gridOffsetY + gameFieldHeight * blockSize - uiElemHeight;
+	MainWindow::btnPosX = MainWindow::GameField::offsetX * 2 + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize;
+	MainWindow::pauseBtnPosY = MainWindow::GameField::offsetY + MainWindow::GameField::gfHeight * MainWindow::GameField::blockSize - MainWindow::uiElemHeight * 2 - MainWindow::uiElemSpacing;
+	MainWindow::quitBtnPosY = MainWindow::GameField::offsetY + MainWindow::GameField::gfHeight * MainWindow::GameField::blockSize - MainWindow::uiElemHeight;
+	
+	MainWindow::d2dGameField = D2D1::RoundedRect(
+		D2D1::RectF(
+			MainWindow::GameField::offsetX,
+			MainWindow::GameField::offsetY,
+			MainWindow::GameField::offsetX + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize,
+			MainWindow::GameField::offsetY + MainWindow::GameField::gfHeight * MainWindow::GameField::blockSize
+		),
+		MainWindow::GameField::cornerRadius, MainWindow::GameField::cornerRadius
+	);
 
-		gameField = {
-			gridOffsetX,  gridOffsetY,
-			gridOffsetX + gameFieldWidth * blockSize,
-			gridOffsetY + gameFieldHeight * blockSize
-		};
+	MainWindow::d2dScoreRect = D2D1::RoundedRect(
+		D2D1::RectF(
+			MainWindow::GameField::offsetX * 2 + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize,
+			MainWindow::GameField::offsetY + MainWindow::Preview::prHeight + MainWindow::uiElemSpacing,
+			MainWindow::GameField::offsetX * 2 + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize + MainWindow::uiElemWidth,
+			MainWindow::GameField::offsetY + MainWindow::Preview::prHeight + MainWindow::uiElemSpacing + MainWindow::uiElemHeight
+		),
+		General::uiCornerRad, General::uiCornerRad
+	);
 
-		score = {
-			gridOffsetX * 2 + gameFieldWidth * blockSize,
-			gridOffsetY + nextWndHeight + uiElemSpacing,
-			gridOffsetX * 2 + gameFieldWidth * blockSize + uiElemWidth,
-			gridOffsetY + nextWndHeight + uiElemSpacing + uiElemHeight
-		};
+	MainWindow::d2dHighRect = D2D1::RoundedRect(
+		D2D1::RectF(
+			MainWindow::GameField::offsetX * 2 + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize,
+			MainWindow::GameField::offsetY + MainWindow::Preview::prHeight + MainWindow::uiElemSpacing * 2 + MainWindow::uiElemHeight,
+			MainWindow::GameField::offsetX * 2 + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize + MainWindow::uiElemWidth,
+			MainWindow::GameField::offsetY + MainWindow::Preview::prHeight + MainWindow::uiElemSpacing * 2 + MainWindow::uiElemHeight * 2
+		),
+		General::uiCornerRad, General::uiCornerRad
+	);
 
-		highScore = {
-			gridOffsetX * 2 + gameFieldWidth * blockSize,
-			gridOffsetY + nextWndHeight + uiElemSpacing * 2 + uiElemHeight,
-			gridOffsetX * 2 + gameFieldWidth * blockSize + uiElemWidth,
-			gridOffsetY + nextWndHeight + uiElemSpacing * 2 + uiElemHeight * 2
-		};
+	MainWindow::d2dNextAreaOut = D2D1::RoundedRect(
+		D2D1::RectF(
+			MainWindow::GameField::offsetX * 2 + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize,
+			MainWindow::GameField::offsetY,
+			MainWindow::GameField::offsetX * 2 + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize + MainWindow::uiElemWidth,
+			MainWindow::GameField::offsetY + MainWindow::Preview::prHeight
+		),
+		General::uiCornerRad, General::uiCornerRad
+	);
 
-		nextWnd = {
-			gridOffsetX * 2 + gameFieldWidth * blockSize, gridOffsetY,
-			gridOffsetX * 2 + gameFieldWidth * blockSize + uiElemWidth,
-			gridOffsetY + nextWndHeight
-		};
+	MainWindow::d2dNextAreaIn = D2D1::RoundedRect(
+		D2D1::RectF(
+			MainWindow::GameField::offsetX * 2 + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize + MainWindow::Preview::padding,
+			MainWindow::GameField::offsetY + MainWindow::Preview::topPadding,
+			MainWindow::GameField::offsetX * 2 + MainWindow::GameField::gfWidth * MainWindow::GameField::blockSize + MainWindow::uiElemWidth - MainWindow::Preview::padding,
+			MainWindow::GameField::offsetY + MainWindow::Preview::prHeight - MainWindow::Preview::padding
+		),
+		General::uiCornerRad, General::uiCornerRad
+	);
 
-		nextWndIn = {
-			nextWnd.left + nextWndPadding, nextWnd.top + nextWndTopPadding,
-			nextWnd.right - nextWndPadding, nextWnd.bottom - nextWndPadding
-		};
+	MainWindow::pauseRect = D2D1::RectF(
+		MainWindow::btnPosX, MainWindow::pauseBtnPosY,
+		MainWindow::btnPosX + MainWindow::uiElemWidth,
+		MainWindow::pauseBtnPosY + MainWindow::uiElemHeight
+	);
 
-		gameOverWndW = static_cast<int>(350.0f * scaleFactor);
-		gameOverWndH = static_cast<int>(250.0f * scaleFactor);
+	MainWindow::quitRect = D2D1::RectF(
+		MainWindow::btnPosX, MainWindow::quitBtnPosY,
+		MainWindow::btnPosX + MainWindow::uiElemWidth,
+		MainWindow::quitBtnPosY + MainWindow::uiElemHeight
+	);
 
-		gameOverWndBtnWidth    = static_cast<int>(100.0f * scaleFactor);
-		gameOverWndBtnHeight   = static_cast<int>(40.0f * scaleFactor);
-		gameOverWndBtnSpacing  = static_cast<int>(20.0f * scaleFactor);
-		gameOverWndBtnRadius   = static_cast<int>(10.0f * scaleFactor);
+	MainWindow::minimizeRect = D2D1::RectF(
+		MainWindow::TitleBar::minimizeBtnPosX,
+		MainWindow::TitleBar::btnPosY,
+		MainWindow::TitleBar::minimizeBtnPosX + MainWindow::TitleBar::btnWidth,
+		MainWindow::TitleBar::btnPosY + MainWindow::TitleBar::btnHeight
+	);
 
-		totalWidth = gameOverWndBtnWidth * 2 + gameOverWndBtnSpacing;
+	MainWindow::closeRect = D2D1::RectF(
+		MainWindow::TitleBar::quitBtnPosX,
+		MainWindow::TitleBar::btnPosY,
+		MainWindow::TitleBar::quitBtnPosX + MainWindow::TitleBar::btnWidth,
+		MainWindow::TitleBar::btnPosY + MainWindow::TitleBar::btnHeight
+	);
 
-		gameOverWndRestartButtonPosX  = static_cast<int>(57.0f * scaleFactor);
-		gameOverWndQuitButtonPosX     = gameOverWndRestartButtonPosX + gameOverWndBtnWidth + gameOverWndBtnSpacing;
-		gameOverWndBtnPosY            = 211 - gameOverWndBtnHeight - 20;
-	}
+	GameOver::goWidth = 350.0f * General::scaleFactor;
+	GameOver::goHeight = 250.0f * General::scaleFactor;
+	GameOver::btnWidth = 100.0f * General::scaleFactor;
+	GameOver::btnHeight = 40.0f * General::scaleFactor;
+	GameOver::btnSpacing = 20.0f * General::scaleFactor;
+	GameOver::btnRadius = 10.0f * General::scaleFactor;
+	GameOver::totalWidth = GameOver::btnWidth * 2 + GameOver::btnSpacing;
+	GameOver::restartButtonPosX = 57.0f * General::scaleFactor;
+	GameOver::quitButtonPosX = GameOver::restartButtonPosX + GameOver::btnWidth + GameOver::btnSpacing;
+	GameOver::btnPosY = 191.0f - 40.0f * General::scaleFactor;
+
+	GameOver::restartRect = D2D1::RectF(
+		GameOver::restartButtonPosX,
+		GameOver::btnPosY,
+		GameOver::restartButtonPosX + GameOver::btnWidth,
+		GameOver::btnPosY + GameOver::btnHeight
+	);
+
+	GameOver::quitRect = D2D1::RectF(
+		GameOver::quitButtonPosX,
+		GameOver::btnPosY,
+		GameOver::quitButtonPosX + GameOver::btnWidth,
+		GameOver::btnPosY + GameOver::btnHeight
+	);
 }

@@ -50,7 +50,7 @@ void Button::SetOnClick(std::function<void()> handler) {
 } 
 
 void Button::Draw() {
-	static const float strokeWidth = Constants::strokeWidth;
+	static const float strokeWidth = UI::General::strokeWidth;
 	static const float offset = strokeWidth / 2.0f;
 
 	D2D1_RECT_F rect = D2D1::RectF(m_bounds.left, m_bounds.top, m_bounds.right, m_bounds.bottom);
@@ -122,11 +122,13 @@ void Button::OnMouseLeave(HWND window) {
 
 void Button::OnLButtonDown(HWND window) { 
 	m_clicked = true; 
-	InvalidateRect(GetParent(window), &m_boundsPx, false); 
+	InvalidateRect(GetParent(window), &m_boundsPx, false);
+	SetFocus(GetParent(window));
 } 
 
 void Button::OnLButtonUp(HWND window) { 
 	m_clicked = false; 
 	if (m_onClick) m_onClick(); 
-	InvalidateRect(GetParent(window), &m_boundsPx, false); 
+	InvalidateRect(GetParent(window), &m_boundsPx, false);
+	SetFocus(GetParent(window));
 }

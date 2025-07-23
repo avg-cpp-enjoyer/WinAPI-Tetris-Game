@@ -37,7 +37,7 @@ intptr_t GameOverWindow::OnNcHitTest(intptr_t lParam) const {
 	POINT pt = { LOWORD(lParam), HIWORD(lParam) };
 	ScreenToClient(m_window, &pt);
 
-	if (pt.y < Constants::titleBarHeight) {
+	if (pt.y < UI::MainWindow::TitleBar::tbHeight) {
 		return HTCAPTION;
 	}
 
@@ -45,6 +45,8 @@ intptr_t GameOverWindow::OnNcHitTest(intptr_t lParam) const {
 }
 
 void GameOverWindow::InitializeD2D() {
+	using namespace UI::General;
+
 	D2D1_FACTORY_OPTIONS options = {};
 	HR_LOG(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory1), &options,
 		reinterpret_cast<void**>(m_d2dFactory.GetAddressOf())));
@@ -53,7 +55,7 @@ void GameOverWindow::InitializeD2D() {
 	HR_LOG(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), &m_writeFactory));
 
 	HR_LOG(m_writeFactory->CreateTextFormat(L"Bahnschrift", nullptr, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL, Constants::fontSize, L"", &m_textFormat));
+		DWRITE_FONT_STRETCH_NORMAL, fontSize, L"", &m_textFormat));
 
 	HR_LOG(m_textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
 	HR_LOG(m_textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
@@ -63,9 +65,9 @@ void GameOverWindow::InitializeD2D() {
 
 	HR_LOG(m_d2dFactory->CreateDCRenderTarget(&rtProps, &m_d2dRT));
 
-	HR_LOG(m_d2dRT->CreateSolidColorBrush(Constants::bgColor, &m_bgBrush));
-	HR_LOG(m_d2dRT->CreateSolidColorBrush(Constants::borderColor, &m_borderBrush));
-	HR_LOG(m_d2dRT->CreateSolidColorBrush(Constants::uiTextColor, &m_textBrush));
+	HR_LOG(m_d2dRT->CreateSolidColorBrush(bgColor, &m_bgBrush));
+	HR_LOG(m_d2dRT->CreateSolidColorBrush(borderColor, &m_borderBrush));
+	HR_LOG(m_d2dRT->CreateSolidColorBrush(textColor, &m_textBrush));
 }
 
 void GameOverWindow::CleanupD2D() {
@@ -80,14 +82,17 @@ void GameOverWindow::CleanupD2D() {
 }
 
 void GameOverWindow::CreateButtons() {
-	m_restartButton = std::make_unique<Button>(m_window, L"Restart", Constants::gameOverRestartRect, Constants::uiElemCornerRad,
-		false, Constants::uiTextColor, Constants::borderColor, Constants::btnClrDefault,
-		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dRT.Get()
+	using namespace UI::GameOver;
+	using namespace UI::General;
+
+	m_restartButton = std::make_unique<Button>(m_window, L"Restart", restartRect, uiCornerRad,
+		false, textColor, borderColor, btnClrDefault,
+		btnClrClicked, btnClrHovered, m_textFormat, m_d2dRT.Get()
 	);
 
-	m_quitButton = std::make_unique<Button>(m_window, L"Quit", Constants::gameOverQuitRect, Constants::uiElemCornerRad,
-		false, Constants::uiTextColor, Constants::borderColor, Constants::btnClrDefault,
-		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dRT.Get()
+	m_quitButton = std::make_unique<Button>(m_window, L"Quit", quitRect, uiCornerRad,
+		false, textColor, borderColor, btnClrDefault,
+		btnClrClicked, btnClrHovered, m_textFormat, m_d2dRT.Get()
 	);
 
 	m_restartButton->SetOnClick([this]() {
@@ -105,8 +110,8 @@ void GameOverWindow::RenderLayeredWindow() {
 	RECT rc;
 	GetClientRect(m_window, &rc);
 
-	const int width = static_cast<int>(Constants::gameOverWndWidth);
-	const int height = static_cast<int>(Constants::gameOverWndHeight);
+	const int width = static_cast<int>(UI::GameOver::goWidth);
+	const int height = static_cast<int>(UI::GameOver::goHeight);
 
 	HDC hdcScreen = GetDC(nullptr);
 	HDC hdcMem = CreateCompatibleDC(hdcScreen);
@@ -140,11 +145,11 @@ void GameOverWindow::RenderLayeredWindow() {
 		std::floor(static_cast<float>(rc.top))   + 1.0f,
 		std::ceil(static_cast<float>(rc.right))  - 1.0f,
 		std::ceil(static_cast<float>(rc.bottom)) - 1.0f,
-		Constants::windowCornerRad - 0.5f,
-		Constants::windowCornerRad - 0.5f
+		UI::MainWindow::cornerRadius - 0.5f,
+		UI::MainWindow::cornerRadius - 0.5f
 	};
 
-	static const float strokeWidth = Constants::strokeWidth;
+	static const float strokeWidth = UI::General::strokeWidth;
 	static const float offset = strokeWidth / 2.0f;
 
 	m_d2dRT->SetTransform(D2D1::Matrix3x2F::Translation(offset, offset));
@@ -154,7 +159,7 @@ void GameOverWindow::RenderLayeredWindow() {
 
 	std::wstring text = L"Game Over!\nScore: " + std::to_wstring(m_score) + L"\nHigh Score: " + std::to_wstring(m_highScore);
 
-	D2D1_RECT_F textRect = D2D1::RectF(0, 0, Constants::gameOverWndWidth, Constants::gameOverWndHeight - 80);
+	D2D1_RECT_F textRect = D2D1::RectF(0, 0, UI::GameOver::goWidth, UI::GameOver::goHeight - 80.0f);
 
 	m_d2dRT->DrawTextW(text.c_str(), static_cast<uint32_t>(text.size()), m_textFormat.Get(), textRect, m_textBrush.Get());
 
@@ -164,10 +169,10 @@ void GameOverWindow::RenderLayeredWindow() {
 	m_d2dRT->EndDraw();
 
 	POINT source = { 0, 0 };
-	SIZE  size = { width, height };
+	SIZE  n = { gfWidth, gfHeight };
 	BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
 
-	UpdateLayeredWindow(m_window, hdcScreen, nullptr, &size, hdcMem, &source, 0, &blend, ULW_ALPHA);
+	UpdateLayeredWindow(m_window, hdcScreen, nullptr, &n, hdcMem, &source, 0, &blend, ULW_ALPHA);
 
 	SelectObject(hdcMem, oldBmp);
 	DeleteObject(bitmap);

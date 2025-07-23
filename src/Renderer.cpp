@@ -25,16 +25,16 @@ void Renderer::RenderMainWindow(const RECT& rect, const GameField& gameField) co
 }
 
 void Renderer::RenderWindow(const RECT& rect) const {
-	static const float windowOff = 2.0f * Constants::scaleFactor;
-	static const float radius = Constants::windowCornerRad;
-	static const float left = static_cast<float>(rect.left);
-	static const float top = static_cast<float>(rect.top);
-	static const float right = static_cast<float>(rect.right) - windowOff;
-	static const float bottom = static_cast<float>(rect.bottom) - windowOff;
+	static const float windowOff = 2.0f * UI::General::scaleFactor;
+	static const float radius    = UI::MainWindow::cornerRadius;
+	static const float left      = static_cast<float>(rect.left);
+	static const float top       = static_cast<float>(rect.top);
+	static const float right     = static_cast<float>(rect.right) - windowOff;
+	static const float bottom    = static_cast<float>(rect.bottom) - windowOff;
 
 	D2D1_ROUNDED_RECT windowRect = D2D1::RoundedRect(D2D1::RectF(left, top, right, bottom), radius, radius);
 
-	static const float strokeWidth = Constants::strokeWidth;
+	static const float strokeWidth = UI::General::strokeWidth;
 	static const float offset = strokeWidth / 2.0f;
 
 	m_context->FillRoundedRectangle(windowRect, m_bgBrush);
@@ -44,10 +44,10 @@ void Renderer::RenderWindow(const RECT& rect) const {
 }
 
 void Renderer::RenderTitleBar(const RECT& rect) const {
-	static const float right = static_cast<float>(rect.right) - 2.0f;
-	static const float bottom = Constants::titleBarHeight + 2.0f;
-	static const float strokeWidth = Constants::strokeWidth;
-	static const float offset = strokeWidth / 2.0f;
+	static const float right        = static_cast<float>(rect.right) - 2.0f;
+	static const float bottom       = UI::MainWindow::TitleBar::tbHeight + 2.0f;
+	static const float strokeWidth  = UI::General::strokeWidth;
+	static const float offset       = strokeWidth / 2.0f;
 
 	m_context->FillGeometry(m_path.Get(), m_uiBrush);
 	m_context->SetTransform(D2D1::Matrix3x2F::Translation(offset, offset));
@@ -56,23 +56,25 @@ void Renderer::RenderTitleBar(const RECT& rect) const {
 }
 
 void Renderer::RenderGameField(const GameField& gameField) const {
-	static const float strokeWidth = Constants::strokeWidth;
-	static const float offset = strokeWidth / 2.0f;
+	using namespace UI::MainWindow::GameField;
+
+	static const float strokeWidth  = UI::General::strokeWidth;
+	static const float offset       = strokeWidth / 2.0f;
 
 	m_context->SetTransform(D2D1::Matrix3x2F::Translation(offset, offset));
-	m_context->DrawRoundedRectangle(Constants::d2dGameField, m_borderBrush, strokeWidth);
+	m_context->DrawRoundedRectangle(UI::MainWindow::d2dGameField, m_borderBrush, strokeWidth);
 	m_context->SetTransform(D2D1::Matrix3x2F::Identity());
 
-	for (int y = 0; y < Constants::gameFieldHeight; ++y) {
-		for (int x = 0; x < Constants::gameFieldWidth; ++x) {
+	for (int y = 0; y < UI::MainWindow::GameField::gfHeight; ++y) {
+		for (int x = 0; x < UI::MainWindow::GameField::gfWidth; ++x) {
 			TetraminoType type = gameField.GetGrid()[x][y];
 			if (type != TetraminoType::TETRAMINO_NONE) {
 				ID2D1Bitmap* bitmap = ResourceManager::GetTetraminoBitmap(type);
 				D2D1_RECT_F dst = D2D1::RectF(
-					Constants::gridOffsetX + x * Constants::blockSize,
-					Constants::gridOffsetY + y * Constants::blockSize,
-					Constants::gridOffsetX + (x + 1) * Constants::blockSize,
-					Constants::gridOffsetY + (y + 1) * Constants::blockSize
+					offsetX + x * blockSize,
+					offsetY + y * blockSize,
+					offsetX + (x + 1) * blockSize,
+					offsetY + (y + 1) * blockSize
 				);
 
 				m_context->DrawBitmap(bitmap, dst);
@@ -82,18 +84,20 @@ void Renderer::RenderGameField(const GameField& gameField) const {
 }
 
 void Renderer::RenderCurrentTetramino(const GameField& gameField) const {
+	using namespace UI::MainWindow::GameField;
+
 	const Tetramino& current = gameField.GetCurrentTetramino();
 	ID2D1Bitmap* bitmap = ResourceManager::GetTetraminoBitmap(current.GetType());
 	for (const auto& block : current.GetTetramino()) {
 		vec2 pos = current.GetVisualPos() + block;
 
-		float fx = Constants::gridOffsetX + pos.x * Constants::blockSize;
-		float fy = Constants::gridOffsetY + pos.y * Constants::blockSize;
+		float fx = offsetX + pos.x * blockSize;
+		float fy = offsetY + pos.y * blockSize;
 
 		fx = std::round(fx);
 		fy = std::round(fy);
 
-		D2D1_RECT_F dst = D2D1::RectF(fx, fy, fx + Constants::blockSize, fy + Constants::blockSize);
+		D2D1_RECT_F dst = D2D1::RectF(fx, fy, fx + blockSize, fy + blockSize);
 		m_context->DrawBitmap(bitmap, dst);
 	}
 }
@@ -105,10 +109,10 @@ void Renderer::RenderGhostTetramino(const GameField& gameField) const {
 		for (const auto& block : ghost.GetTetramino()) {
 			vec2 pos = ghost.GetPos() + block;
 			D2D1_RECT_F dst = D2D1::RectF(
-				Constants::gridOffsetX + pos.x * Constants::blockSize,
-				Constants::gridOffsetY + pos.y * Constants::blockSize,
-				Constants::gridOffsetX + (pos.x + 1) * Constants::blockSize,
-				Constants::gridOffsetY + (pos.y + 1) * Constants::blockSize
+				offsetX + pos.x * blockSize,
+				offsetY + pos.y * blockSize,
+				offsetX + (pos.x + 1) * blockSize,
+				offsetY + (pos.y + 1) * blockSize
 			);
 			m_context->DrawBitmap(bitmap, dst);
 		}
@@ -116,11 +120,14 @@ void Renderer::RenderGhostTetramino(const GameField& gameField) const {
 }
 
 void Renderer::RenderNextTetramino(const GameField& gameField) const {
-	D2D1_ROUNDED_RECT& nextAreaOut = Constants::d2dNextAreaOut;
-	D2D1_ROUNDED_RECT& nextAreaIn = Constants::d2dNextAreaIn;
+	using namespace UI::MainWindow;
+	using namespace UI::MainWindow::GameField;
 
-	static const float strokeWidth = Constants::strokeWidth;
-	static const float offset = strokeWidth / 2.0f;
+	D2D1_ROUNDED_RECT& nextAreaOut  = d2dNextAreaOut;
+	D2D1_ROUNDED_RECT& nextAreaIn   = d2dNextAreaIn;
+
+	static const float strokeWidth  = UI::General::strokeWidth;
+	static const float offset       = strokeWidth / 2.0f;
 
 	m_context->FillRoundedRectangle(nextAreaOut, m_uiBrush);
 	m_context->FillRoundedRectangle(nextAreaIn, m_bgBrush);
@@ -135,16 +142,16 @@ void Renderer::RenderNextTetramino(const GameField& gameField) const {
 	const Tetramino& next = gameField.GetNextTetramino();
 	ID2D1Bitmap* bitmap = ResourceManager::GetTetraminoBitmap(next.GetType());
 	for (const auto& block : next.GetTetramino()) {
-		auto it = Constants::offsets.find(next.GetType());
+		auto it = Preview::offsets.find(next.GetType());
 		float offX = it->second.x;
 		float offY = it->second.y;
 
 		vec2 pos = next.GetPos() + block;
 		D2D1_RECT_F dst = D2D1::RectF(
-			Constants::nextAreaIn.left + offX + pos.x * Constants::blockSize,
-			Constants::nextAreaIn.top + offY + pos.y * Constants::blockSize,
-			Constants::nextAreaIn.left + offX + (pos.x + 1) * Constants::blockSize,
-			Constants::nextAreaIn.top + offY + (pos.y + 1) * Constants::blockSize
+			d2dNextAreaIn.rect.left + offX + pos.x * blockSize,
+			d2dNextAreaIn.rect.top + offY + pos.y * blockSize,
+			d2dNextAreaIn.rect.left + offX + (pos.x + 1) * blockSize,
+			d2dNextAreaIn.rect.top + offY + (pos.y + 1) * blockSize
 		);
 
 		m_context->DrawBitmap(bitmap, dst);
@@ -152,8 +159,8 @@ void Renderer::RenderNextTetramino(const GameField& gameField) const {
 }
 
 void Renderer::DrawRoundedText(const D2D1_ROUNDED_RECT& rect, const std::wstring& text) const {
-	static const float strokeWidth = Constants::strokeWidth;
-	static const float offset = strokeWidth / 2.0f;
+	static const float strokeWidth  = UI::General::strokeWidth;
+	static const float offset       = strokeWidth / 2.0f;
 
 	m_context->FillRoundedRectangle(rect, m_uiBrush);
 	m_context->SetTransform(D2D1::Matrix3x2F::Translation(offset, offset));
@@ -164,11 +171,11 @@ void Renderer::DrawRoundedText(const D2D1_ROUNDED_RECT& rect, const std::wstring
 }
 
 void Renderer::RenderScore(const GameField& gameField) const {
-	DrawRoundedText(Constants::d2dScoreRect, L"Score: " + std::to_wstring(gameField.GetScore()));
+	DrawRoundedText(UI::MainWindow::d2dScoreRect, L"Score: " + std::to_wstring(gameField.GetScore()));
 }
 
 void Renderer::RenderHighScore(const GameField& gameField) const {
-	DrawRoundedText(Constants::d2dHighRect, L"High:  " + std::to_wstring(gameField.GetHighScore()));
+	DrawRoundedText(UI::MainWindow::d2dHighRect, L"High:  " + std::to_wstring(gameField.GetHighScore()));
 }
 
 void Renderer::UpdateAnimations(float deltaTime, GameField& gameField) {
@@ -179,11 +186,11 @@ void Renderer::UpdateAnimations(float deltaTime, GameField& gameField) {
 }
 
 void Renderer::CreateTitleBarFigure(const RECT& rect) {
-	static const float radius = Constants::windowCornerRad;
-	static const float left = Constants::strokeWidth;
-	static const float top = Constants::strokeWidth;
-	static const float right = static_cast<float>(rect.right) - 2.0f;
-	static const float bottom = Constants::titleBarHeight + 2.0f;
+	static const float radius   = UI::MainWindow::cornerRadius;
+	static const float left     = UI::General::strokeWidth;
+	static const float top      = UI::General::strokeWidth;
+	static const float right    = static_cast<float>(rect.right) - 2.0f;
+	static const float bottom   = UI::MainWindow::TitleBar::tbHeight + 2.0f;
 
 	Microsoft::WRL::ComPtr<ID2D1GeometrySink> sink;
 

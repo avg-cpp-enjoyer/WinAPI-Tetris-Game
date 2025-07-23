@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Windows.h>
 #include <d2d1.h>
 #include <shellscalingapi.h>
 #include <unordered_map>
@@ -9,88 +8,91 @@
 
 #pragma comment(lib, "Shcore.lib")
 
-namespace Constants {
+namespace UI {
 	void Init();
 
-	inline float scaleFactor = 1.0f;
-	inline float buttonTextOffsetY;
+	namespace General {
+		inline float scaleFactor = 1.0f;
 
-	inline constexpr int gameFieldWidth = 10;
-	inline constexpr int gameFieldHeight = 20;
-	inline float gridCornerRadius;
+		inline float fontSize;
+		inline float uiCornerRad;
 
-	inline float fontSize;
-	inline float uiElemCornerRad;
+		inline constexpr float strokeWidth = 1.0f;
 
-	inline constexpr float strokeWidth = 1.0f;
+		inline const D2D1::ColorF bgColor(30.0f / 255, 30.0f / 255, 30.0f / 255, 1.0f);
+		inline const D2D1::ColorF uiColor(40.0f / 255, 40.0f / 255, 40.0f / 255, 1.0f);
+		inline const D2D1::ColorF borderColor(80.0f / 255, 80.0f / 255, 80.0f / 255, 1.0f);
+		inline const D2D1::ColorF btnClrDefault(40.0f / 255, 40.0f / 255, 40.0f / 255, 1.0f);
+		inline const D2D1::ColorF btnClrHovered(50.0f / 255, 50.0f / 255, 50.0f / 255, 1.0f);
+		inline const D2D1::ColorF btnClrClicked(40.0f / 255, 40.0f / 255, 40.0f / 255, 1.0f);
+		inline const D2D1::ColorF textColor(128.0f / 255, 128.0f / 255, 128.0f / 255, 1.0f);
+	}
 
-	inline const D2D1::ColorF bgColor(30.0f / 255, 30.0f / 255, 30.0f / 255, 1.0f);
-	inline const D2D1::ColorF uiColor(40.0f / 255, 40.0f / 255, 40.0f / 255, 1.0f);
-	inline const D2D1::ColorF borderColor(80.0f / 255, 80.0f / 255, 80.0f / 255, 1.0f);
-	inline const D2D1::ColorF btnClrDefault(40.0f / 255, 40.0f / 255, 40.0f / 255, 1.0f);
-	inline const D2D1::ColorF btnClrHovered(50.0f / 255, 50.0f / 255, 50.0f / 255, 1.0f);
-	inline const D2D1::ColorF btnClrClicked(40.0f / 255, 40.0f / 255, 40.0f / 255, 1.0f);
-	inline const D2D1::ColorF uiTextColor(128.0f / 255, 128.0f / 255, 128.0f / 255, 1.0f);
+	namespace MainWindow {
+		namespace GameField {
+			inline constexpr int gfWidth = 10;
+			inline constexpr int gfHeight = 20;
+			inline float cornerRadius;
+			inline float blockSize;
+			inline float offsetX;
+			inline float offsetY;
+		}
 
-	inline float titleBarHeight;
-	inline float titleBarBtnWidth;
-	inline float titleBarBtnHeight;
-	inline float titleBarMinimizeBtnPosX;
-	inline float titleBarQuitBtnPosX;
-	inline float titleBarBtnPosY;
+		namespace TitleBar {
+			inline float tbHeight;
+			inline float btnWidth;
+			inline float btnHeight;
+			inline float minimizeBtnPosX;
+			inline float quitBtnPosX;
+			inline float btnPosY;
+		}
 
-	inline int windowWidth;
-	inline int windowHeight;
-	inline float windowCornerRad;
+		namespace Preview {
+			inline float prHeight;
+			inline float padding;
+			inline float topPadding;
+			inline std::unordered_map<TetraminoType, D2D1_POINT_2F> offsets;
+		}
 
-	inline float blockSize;
-	inline float gridOffsetX;
-	inline float gridOffsetY;
-	inline float uiElemWidth;
-	inline float uiElemHeight;
-	inline float uiElemSpacing;
-	inline float nextWndHeight;
-	inline float nextWndPadding;
-	inline float nextWndTopPadding;
+		inline int mwWidth;
+		inline int mwHeight;
+		inline float cornerRadius;
+		inline float uiElemWidth;
+		inline float uiElemHeight;
+		inline float uiElemSpacing;
+		inline float btnPosX;
+		inline float pauseBtnPosY;
+		inline float quitBtnPosY;
 
-	inline std::unordered_map<TetraminoType, D2D1_POINT_2F> offsets;
+		inline D2D1_ROUNDED_RECT d2dNextAreaOut;
+		inline D2D1_ROUNDED_RECT d2dNextAreaIn;
+		inline D2D1_ROUNDED_RECT d2dGameField;
+		inline D2D1_ROUNDED_RECT d2dScoreRect;
+		inline D2D1_ROUNDED_RECT d2dHighRect;
 
-	inline float iTetraminoOffX, jTetraminoOffX, lTetraminoOffX, oTetraminoOffX;
-	inline float sTetraminoOffX, zTetraminoOffX, tTetraminoOffX;
-	inline float iTetraminoOffY, jTetraminoOffY, lTetraminoOffY, oTetraminoOffY;
-	inline float sTetraminoOffY, zTetraminoOffY, tTetraminoOffY;
+		inline D2D1_RECT_F pauseRect;
+		inline D2D1_RECT_F quitRect;
+		inline D2D1_RECT_F closeRect;
+		inline D2D1_RECT_F minimizeRect;
+	}
 
-	inline float mainWndBtnPosX;
-	inline float mainWndPauseBtnPosY;
-	inline float mainWndQuitBtnPosY;
+	namespace GameOver {
+		inline float goWidth;
+		inline float goHeight;
+		inline float btnWidth;
+		inline float btnHeight;
+		inline float btnSpacing;
+		inline float btnRadius;
+		inline float totalWidth;
+		inline float restartButtonPosX;
+		inline float quitButtonPosX;
+		inline float btnPosY;
 
-	inline RECT gameField;
-	inline RECT score;
-	inline RECT highScore;
-	inline RECT nextAreaOut;
-	inline RECT nextAreaIn;
+		inline D2D1_RECT_F restartRect;
+		inline D2D1_RECT_F quitRect;
+	}
+}
 
-	inline D2D1_ROUNDED_RECT d2dNextAreaOut;
-	inline D2D1_ROUNDED_RECT d2dNextAreaIn;
-	inline D2D1_ROUNDED_RECT d2dGameField;
-	inline D2D1_ROUNDED_RECT d2dScoreRect;
-	inline D2D1_ROUNDED_RECT d2dHighRect;
-
-	inline D2D1_RECT_F pauseRect;
-	inline D2D1_RECT_F quitRect;
-	inline D2D1_RECT_F closeRect;
-	inline D2D1_RECT_F minimizeRect;
-	inline D2D1_RECT_F gameOverRestartRect;
-	inline D2D1_RECT_F gameOverQuitRect;
-
-	inline float gameOverWndWidth;
-	inline float gameOverWndHeight;
-	inline float gameOverWndBtnWidth;
-	inline float gameOverWndBtnHeight;
-	inline float gameOverWndBtnSpacing;
-	inline float gameOverWndBtnRadius;
-	inline float totalWidth;
-	inline float gameOverWndRestartButtonPosX;
-	inline float gameOverWndQuitButtonPosX;
-	inline float gameOverWndBtnPosY;
+namespace Render {
+	inline constexpr double targetFPS = 144.0;
 }

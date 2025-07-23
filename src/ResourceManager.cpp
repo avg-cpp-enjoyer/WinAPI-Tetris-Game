@@ -44,10 +44,10 @@ void ResourceManager::LoadTetraminoBitmap(TetraminoType type, const wchar_t* res
 	}
 
 	void* dataPtr = LockResource(data);
-	DWORD size = SizeofResource(nullptr, resource);
+	DWORD n = SizeofResource(nullptr, resource);
 
 	Microsoft::WRL::ComPtr<IStream> stream;
-	stream.Attach(SHCreateMemStream(reinterpret_cast<const BYTE*>(dataPtr), size));
+	stream.Attach(SHCreateMemStream(reinterpret_cast<const BYTE*>(dataPtr), n));
 	if (!stream) {
 		throw std::runtime_error("Failed to create memory stream");
 	}

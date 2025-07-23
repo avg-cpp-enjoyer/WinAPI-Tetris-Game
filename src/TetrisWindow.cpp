@@ -114,18 +114,20 @@ void TetrisWindow::InitText() {
 		reinterpret_cast<IUnknown**>(m_writeFactory.GetAddressOf())));
 
 	HR_LOG(m_writeFactory->CreateTextFormat(L"Bahnschrift", nullptr, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL, Constants::fontSize, L"", &m_textFormat));
+		DWRITE_FONT_STRETCH_NORMAL, UI::General::fontSize, L"", &m_textFormat));
 
 	m_textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 	m_textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 }
 
 void TetrisWindow::InitBrushes() {
-	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::bgColor, &m_bgBrush));
-	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::uiColor, &m_uiBrush));
-	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::borderColor, &m_borderBrush));
-	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::uiTextColor, &m_textBrush));
-	HR_LOG(m_d2dContext->CreateSolidColorBrush(Constants::borderColor, &m_gridBrush));
+	using namespace UI::General;
+
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(bgColor, &m_bgBrush));
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(uiColor, &m_uiBrush));
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(borderColor, &m_borderBrush));
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(textColor, &m_textBrush));
+	HR_LOG(m_d2dContext->CreateSolidColorBrush(borderColor, &m_gridBrush));
 }
 
 void TetrisWindow::Cleanup() {
@@ -148,28 +150,27 @@ void TetrisWindow::Cleanup() {
 }
 
 void TetrisWindow::RenderLoop() {
-	constexpr double targetFPS = 144.0;
-	const auto frameDuration = std::chrono::duration<double>(1.0 / targetFPS);
+	static constexpr auto frameDuration = std::chrono::duration<double>(1.0 / Render::targetFPS);
 	auto lastTime = std::chrono::steady_clock::now();
 	auto nextFrame = lastTime + frameDuration;
 
 	while (m_renderRunning.load(std::memory_order_relaxed)) {
 		std::this_thread::sleep_until(nextFrame);
 		auto now = std::chrono::steady_clock::now();
-		std::chrono::duration<double> delta = now - lastTime;
+		std::chrono::duration<double> deltaTime = now - lastTime;
 		lastTime = now;
 		nextFrame += frameDuration;
 		{
-			std::shared_lock lk(m_gameFieldMutex);
-			m_renderer->UpdateAnimations(static_cast<float>(delta.count()), m_gameField);
-		}
-		Tetramino& current = m_gameField.GetCurrentTetramino();
-		if (m_pendingLock.load(std::memory_order_relaxed) && !current.IsAnimating()) {
-			std::unique_lock lk(m_gameFieldMutex);
-			m_gameField.LockTetramino();
-			m_nextTick = std::chrono::steady_clock::now() + std::chrono::duration<double>(0.5);
-			m_cmdCV.notify_one();
-			m_pendingLock.store(false, std::memory_order_relaxed);
+			std::unique_lock<std::mutex> lock(m_gameFieldMutex);
+			m_renderer->UpdateAnimations(static_cast<float>(deltaTime.count()), m_gameField);
+
+			Tetramino& current = m_gameField.GetCurrentTetramino();
+			if (m_pendingLock.load(std::memory_order_relaxed) && !current.IsAnimating()) {
+				m_gameField.LockTetramino();
+				m_nextTick = std::chrono::steady_clock::now() + std::chrono::duration<double>(0.5);
+				m_cmdCV.notify_one();
+				m_pendingLock.store(false, std::memory_order_relaxed);
+			}
 		}
 		RenderFrame();
 	}
@@ -188,12 +189,12 @@ void TetrisWindow::LogicLoop() {
 			break;
 		}
 
-		std::deque<Command> commandBuffer;
-		commandBuffer.swap(m_commands);
 		lock.unlock();
-		for (auto cmd : commandBuffer) {
+		for (const auto& cmd : m_commands) {
 			ExecuteCommand(cmd);
 		}
+
+		m_commands.clear();
 		lock.lock();
 
 		if (m_isPaused.load(std::memory_order_relaxed)) {
@@ -208,12 +209,14 @@ void TetrisWindow::LogicLoop() {
 			continue;
 		}
 
+		lock.unlock();
 		now = std::chrono::steady_clock::now();
 		if (now >= m_nextTick) {
 			m_nextTick = now + tickInterval;
 			GravityStep();
 		}
 
+		lock.lock();
 		m_needsRedraw.store(true, std::memory_order_relaxed);
 	}
 }
@@ -251,11 +254,6 @@ void TetrisWindow::ExecuteCommand(Command cmd) {
 		m_gameField.HardDrop();
 		m_pendingLock.store(true, std::memory_order_relaxed);
 		break;
-	case Command::CommitDrop: {
-		std::unique_lock lk(m_gameFieldMutex);
-		m_gameField.LockTetramino();
-		m_nextTick = std::chrono::steady_clock::now() + std::chrono::duration<double>(0.5);
-	}
 	case Command::Pause:     
 		PauseGame(); 
 		break;
@@ -265,13 +263,16 @@ void TetrisWindow::ExecuteCommand(Command cmd) {
 }
 
 void TetrisWindow::CreateButtons() {
-	m_pauseButton = std::make_unique<Button>(m_window, L"Pause", Constants::pauseRect, Constants::uiElemCornerRad,
-		false, Constants::uiTextColor, Constants::borderColor, Constants::btnClrDefault,
-		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dContext.Get());
+	using namespace UI::MainWindow;
+	using namespace UI::General;
 
-	m_quitButton = std::make_unique<Button>(m_window, L"Quit", Constants::quitRect, Constants::uiElemCornerRad,
-		false, Constants::uiTextColor, Constants::borderColor, Constants::btnClrDefault,
-		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dContext.Get());
+	m_pauseButton = std::make_unique<Button>(m_window, L"Pause", pauseRect, uiCornerRad,
+		false, textColor, borderColor, btnClrDefault,
+		btnClrClicked, btnClrHovered, m_textFormat, m_d2dContext.Get());
+
+	m_quitButton = std::make_unique<Button>(m_window, L"Quit", quitRect, uiCornerRad,
+		false, textColor, borderColor, btnClrDefault,
+		btnClrClicked, btnClrHovered, m_textFormat, m_d2dContext.Get());
 
 	m_pauseButton->SetOnClick([this]() {
 		PauseGame();
@@ -285,13 +286,17 @@ void TetrisWindow::CreateButtons() {
 }
 
 void TetrisWindow::CreateTitleButtons() {
-	m_closeButton = std::make_unique<TitleButton>(m_window, L"✕", Constants::closeRect, Constants::windowCornerRad,
-		true, Constants::uiTextColor, Constants::uiColor, Constants::btnClrDefault,
-		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dContext.Get());
+	using UI::MainWindow::cornerRadius;
+	using namespace UI::MainWindow;
+	using namespace UI::General;
 
-	m_minimizeButton = std::make_unique<Button>(m_window, L"⤵", Constants::minimizeRect, 0.0f,
-		true, Constants::uiTextColor, Constants::uiColor, Constants::btnClrDefault,
-		Constants::btnClrClicked, Constants::btnClrHovered, m_textFormat, m_d2dContext.Get());
+	m_closeButton = std::make_unique<TitleButton>(m_window, L"✕", closeRect, cornerRadius,
+		true, textColor, uiColor, btnClrDefault,
+		btnClrClicked, btnClrHovered, m_textFormat, m_d2dContext.Get());
+
+	m_minimizeButton = std::make_unique<Button>(m_window, L"⤵", minimizeRect, 0.0f,
+		true, textColor, uiColor, btnClrDefault,
+		btnClrClicked, btnClrHovered, m_textFormat, m_d2dContext.Get());
 
 	m_closeButton->SetOnClick([this]() {
 		PostMessage(m_window, WM_CLOSE, 0, 0);
@@ -306,7 +311,7 @@ intptr_t TetrisWindow::OnNcHitTest(intptr_t lParam) const {
 	POINT pt = { LOWORD(lParam), HIWORD(lParam) };
 	ScreenToClient(m_window, &pt);
 
-	if (pt.y < Constants::titleBarHeight) {
+	if (pt.y < UI::MainWindow::TitleBar::tbHeight) {
 		return HTCAPTION;
 	}
 
@@ -318,30 +323,33 @@ void TetrisWindow::OnKeyDown(uintptr_t key) {
 
 	switch (key) {
 	case VK_LEFT:  
-		m_commands.push_back(Command::MoveLeft); break;
+		m_commands.push(Command::MoveLeft); break;
 	case VK_RIGHT: 
-		m_commands.push_back(Command::MoveRight);break;
+		m_commands.push(Command::MoveRight);break;
 	case VK_DOWN:  
-		m_commands.push_back(Command::MoveDown); break;
+		m_commands.push(Command::MoveDown); break;
 	case VK_UP:    
-		m_commands.push_back(Command::Rotate); break;
+		m_commands.push(Command::Rotate); break;
 	case VK_SPACE:
-		m_commands.push_back(Command::HardDrop); break;
+		m_commands.push(Command::HardDrop); break;
 	}
 
 	m_cmdCV.notify_one();
 }
 
 bool TetrisWindow::CreateGameOverWindow() {
+	using UI::GameOver::goWidth;
+	using UI::GameOver::goHeight;
+
 	RECT rcMain;
 	GetWindowRect(m_window, &rcMain);
 
-	const int x = rcMain.left + (rcMain.right - rcMain.left - static_cast<int>(Constants::gameOverWndWidth)) / 2;
-	const int y = rcMain.top + (rcMain.bottom - rcMain.top - static_cast<int>(Constants::gameOverWndHeight)) / 2;
+	const int x = rcMain.left + (rcMain.right - rcMain.left - static_cast<int>(gfWidth)) / 2;
+	const int y = rcMain.top + (rcMain.bottom - rcMain.top - static_cast<int>(gfHeight)) / 2;
 
 	GameOverWindow gameOver(m_gameField.GetScore(), GameField::GetHighScore());
 	gameOver.Create(L"Game Over", WS_POPUP | WS_VISIBLE, WS_EX_LAYERED,
-		x, y, static_cast<int>(Constants::gameOverWndWidth), static_cast<int>(Constants::gameOverWndHeight));
+		x, y, static_cast<int>(gfWidth), static_cast<int>(gfHeight));
 
 	EnableWindow(m_window, false);
 
@@ -417,6 +425,12 @@ void TetrisWindow::OnCreate() {
 
 	m_renderRunning.store(true, std::memory_order_relaxed);
 	m_renderThread = std::thread(&TetrisWindow::RenderLoop, this);
+
+	SetThreadPriority(m_renderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
+	SetThreadPriority(m_logicThread.native_handle(), THREAD_PRIORITY_HIGHEST);
+
+	SetThreadAffinityMask(m_renderThread.native_handle(), 1ULL << 2);
+	SetThreadAffinityMask(m_logicThread.native_handle(), 1ULL << 3);
 }
 
 void TetrisWindow::OnDestroy() {

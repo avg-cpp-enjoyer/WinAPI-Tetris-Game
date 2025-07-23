@@ -8,6 +8,7 @@
 #include "Constants.h"
 #include "GameOverWindow.h"
 #include "Renderer.hpp"
+#include "RingBuffer.hpp"
 #include "Log.hpp"
 
 #include <Windows.h>
@@ -39,7 +40,7 @@ enum class Command {
 class TetrisWindow final : public Base<TetrisWindow> {
 public:
 	TetrisWindow() = default;
-	~TetrisWindow() override {}
+	~TetrisWindow() noexcept override {}
 
 	const wchar_t* ClassName() const override;
 	intptr_t HandleMessage(uint32_t msg, uintptr_t wParam, intptr_t lParam) override;
@@ -73,12 +74,12 @@ private:
 
 	std::thread                m_renderThread;
 	std::thread                m_logicThread;
-	mutable std::shared_mutex  m_gameFieldMutex;
+	std::mutex                 m_gameFieldMutex;
 	std::mutex                 m_cmdMutex;
 	std::mutex                 m_restartMutex;
 	std::condition_variable    m_cmdCV;
 	std::condition_variable    m_restartCV;
-	std::deque<Command>        m_commands;
+	RingBuffer<Command, 160>   m_commands;
 	std::atomic<bool>          m_renderRunning{ false };
 	std::atomic<bool>          m_logicRunning{ false };
 	std::atomic<bool>          m_isPaused{ false };

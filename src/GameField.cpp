@@ -89,7 +89,7 @@ int GameField::GetHighScore() {
   	return HighScoreManager::Get();
 }
 
-const std::array<std::array<TetraminoType, Constants::gameFieldHeight>, Constants::gameFieldWidth>& GameField::GetGrid() const {
+const std::array<std::array<TetraminoType, gfHeight>, gfWidth>& GameField::GetGrid() const {
 	return m_grid;
 }
 
@@ -121,11 +121,11 @@ bool GameField::TetraminoFits(const Tetramino& tetramino) const {
 	for (const auto& block : tetramino.GetTetramino()) {
 		const vec2& pos = tetramino.GetPos() + block;
 
-		if (pos.y < 0 || pos.y >= Constants::gameFieldHeight) {
+		if (pos.y < 0 || pos.y >= UI::MainWindow::GameField::gfHeight) {
 			return false;
 		}
 
-		if (pos.x < 0 || pos.x >= Constants::gameFieldWidth) {
+		if (pos.x < 0 || pos.x >= UI::MainWindow::GameField::gfWidth) {
 			return false;
 		}
 
@@ -142,7 +142,7 @@ void GameField::LockTetramino() {
 
 	for (const auto& block : m_currentTetramino.GetTetramino()) {
 		const vec2& pos = m_currentTetramino.GetPos() + block;
-		if (pos.x >= 0 && pos.x < Constants::gameFieldWidth && pos.y >= 0 && pos.y < Constants::gameFieldHeight) {
+		if (pos.x >= 0 && pos.x < gfWidth && pos.y >= 0 && pos.y < gfHeight) {
 			m_grid[static_cast<int>(pos.x)][static_cast<int>(pos.y)] = m_currentTetramino.GetType();
 		}
 	}
@@ -171,12 +171,12 @@ void GameField::UpdateGhostPos() {
 }
 
 void GameField::ClearLines() {
-	int writeY = Constants::gameFieldHeight - 1;
+	int writeY = gfHeight - 1;
 	int linesCleared = 0;
 
-	for (int y = Constants::gameFieldHeight - 1; y >= 0; y--) {
+	for (int y = gfHeight - 1; y >= 0; y--) {
 		bool full = true;
-		for (int x = 0; x < Constants::gameFieldWidth; ++x) {
+		for (int x = 0; x < gfWidth; ++x) {
 			if (m_grid[x][y] == TetraminoType::TETRAMINO_NONE) {
 				full = false;
 				break;
@@ -185,18 +185,18 @@ void GameField::ClearLines() {
 
 		if (!full) {
 			if (y != writeY) {
-				for (int x = 0; x < Constants::gameFieldWidth; x++) {
+				for (int x = 0; x < gfWidth; x++) {
 					m_grid[x][writeY] = m_grid[x][y];
 				}
 			}
-			--writeY;
+			writeY--;
 		} else {
 			linesCleared++;
 		}
 	}
 
 	for (int y = writeY; y >= 0; y--) {
-		for (int x = 0; x < Constants::gameFieldWidth; ++x) {
+		for (int x = 0; x < gfWidth; x++) {
 			m_grid[x][y] = TetraminoType::TETRAMINO_NONE;
 		}
 	}
