@@ -92,7 +92,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MinimalRebuild>
       </MinimalRebuild>
       <Optimization>Disabled</Optimization>
@@ -347,6 +347,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\src\Constants.h" />
     <ClInclude Include="..\src\Log.hpp" />
     <ClInclude Include="..\src\Renderer.hpp" />
+    <ClInclude Include="..\src\RingBuffer.hpp" />
     <ClInclude Include="..\src\TetraminoManager.h" />
     <ClInclude Include="..\src\TitleButton.h" />
     <ClInclude Include="..\src\vec2.h" />

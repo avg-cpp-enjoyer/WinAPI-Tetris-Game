@@ -87,6 +87,9 @@
     <ClInclude Include="..\src\Log.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\RingBuffer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="D:\WinAPI_tetris\CMakeLists.txt" />
